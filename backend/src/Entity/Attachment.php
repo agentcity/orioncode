@@ -8,7 +8,9 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'attachments')]
+#[ORM\Table(name: 'attachments', indexes: [
+    new ORM\Index(columns: ['message_id'], name: 'idx_attachment_message')
+])]
 #[ORM\HasLifecycleCallbacks]
 class Attachment
 {
@@ -46,8 +48,6 @@ class Attachment
         $this->id = Uuid::uuid4();
         $this->createdAt = new DateTimeImmutable();
     }
-
-    // ... геттеры и сеттеры без изменений ...
 
     public function getId(): UuidInterface
     {

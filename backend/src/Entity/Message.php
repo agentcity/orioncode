@@ -2,13 +2,21 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'messages')]
+#[ORM\Table(name: 'messages', indexes: [
+    new ORM\Index(columns: ['conversation_id'], name: 'idx_message_conversation'),
+    new ORM\Index(columns: ['sender_type'], name: 'idx_message_sender_type'),
+    new ORM\Index(columns: ['sender_id'], name: 'idx_message_sender_id'),
+    new ORM\Index(columns: ['direction'], name: 'idx_message_direction'),
+    new ORM\Index(columns: ['sent_at'], name: 'idx_message_sent_at')
+])]
 #[ORM\HasLifecycleCallbacks]
 class Message
 {
@@ -47,13 +55,15 @@ class Message
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
 
+    #[ORM\OneToMany(mappedBy: 'message', targetEntity: Attachment::class, cascade: ['persist', 'remove'])]
+    private Collection $attachments;
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
         $this->createdAt = new DateTimeImmutable();
+        $this->attachments = new ArrayCollection();
     }
-
-    // === Getters and Setters ===
 
     public function getId(): UuidInterface
     {
@@ -164,11 +174,30 @@ class Message
         return $this->createdAt;
     }
 
-    // === Lifecycle Callbacks ===
-
-    #[ORM\PreUpdate]
-    public function updatedTimestamp(): void
+    /**
+     * @return Collection<int, Attachment>
+     */
+    public function getAttachments(): Collection
     {
-        // Обновляем только `updatedAt`, если понадобится в будущем
+        return $this->attachments;
+    }
+
+    public function addAttachment(Attachment $attachment): self
+    {
+        if (!$this->attachments->contains($attachment)) {
+            $this->attachments->add($attachment);
+            $attachment->setMessage($this);
+        }
+        return $this;
+    }
+
+    public function removeAttachment(Attachment $attachment): self
+    {
+        if ($this->attachments->removeElement($attachment)) {
+            if ($attachment->getMessage() === $this) {
+                $attachment->setMessage(null);
+            }
+        }
+        return $this;
     }
 }

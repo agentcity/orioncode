@@ -12,7 +12,10 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'users')]
+#[ORM\Table(name: 'users', indexes: [
+    new ORM\Index(columns: ['email'], name: 'idx_user_email'),
+    new ORM\Index(columns: ['is_active'], name: 'idx_user_is_active')
+])]
 #[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
@@ -44,8 +47,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $updatedAt;
 
-    // === Relations ===
-
     #[ORM\OneToMany(mappedBy: 'user', targetEntity: Account::class, cascade: ['remove'])]
     private Collection $accounts;
 
@@ -60,8 +61,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->accounts = new ArrayCollection();
         $this->conversations = new ArrayCollection();
     }
-
-    // === Getters and Setters (existing ones skipped for brevity) ===
 
     public function getId(): UuidInterface
     {
@@ -156,8 +155,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function eraseCredentials(): void
     {
     }
-
-    // === New: Relations Getters ===
 
     /**
      * @return Collection<int, Account>

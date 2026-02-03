@@ -10,7 +10,23 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'conversations')]
+#[ORM\Table(
+    name: 'conversations',
+    indexes: [
+        new ORM\Index(columns: ['account_id'], name: 'idx_conversation_account'),
+        new ORM\Index(columns: ['contact_id'], name: 'idx_conversation_contact'),
+        new ORM\Index(columns: ['external_id'], name: 'idx_conversation_external_id'),
+        new ORM\Index(columns: ['type'], name: 'idx_conversation_type'),
+        new ORM\Index(columns: ['status'], name: 'idx_conversation_status'),
+        new ORM\Index(columns: ['last_message_at'], name: 'idx_conversation_last_message'),
+        new ORM\Index(columns: ['assigned_to_id'], name: 'idx_conversation_assigned_to'),
+        new ORM\Index(columns: ['unread_count'], name: 'idx_conversation_unread_count'),
+        new ORM\Index(columns: ['account_id', 'type', 'external_id'], name: 'uniq_conversation_external')
+    ],
+    uniqueConstraints: [
+        new ORM\UniqueConstraint(columns: ['account_id', 'type', 'external_id'], name: 'uniq_conversation_external')
+    ]
+)]
 #[ORM\HasLifecycleCallbacks]
 class Conversation
 {
@@ -54,8 +70,6 @@ class Conversation
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $updatedAt;
 
-    // === Relation ===
-
     #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, cascade: ['persist', 'remove'])]
     private Collection $messages;
 
@@ -66,8 +80,6 @@ class Conversation
         $this->updatedAt = new DateTimeImmutable();
         $this->messages = new ArrayCollection();
     }
-
-    // ... существующие геттеры/сеттеры ...
 
     public function getId(): UuidInterface
     {
@@ -182,8 +194,6 @@ class Conversation
     {
         return $this->updatedAt;
     }
-
-    // === New: Messages ===
 
     /**
      * @return Collection<int, Message>

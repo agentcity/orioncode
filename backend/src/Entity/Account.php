@@ -10,7 +10,11 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'accounts')]
+#[ORM\Table(name: 'accounts', indexes: [
+    new ORM\Index(columns: ['user_id'], name: 'idx_account_user'),
+    new ORM\Index(columns: ['type'], name: 'idx_account_type'),
+    new ORM\Index(columns: ['status'], name: 'idx_account_status')
+])]
 #[ORM\HasLifecycleCallbacks]
 class Account
 {
@@ -46,8 +50,6 @@ class Account
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $updatedAt;
 
-    // === Relation ===
-
     #[ORM\OneToMany(mappedBy: 'account', targetEntity: Conversation::class, cascade: ['remove'])]
     private Collection $conversations;
 
@@ -58,8 +60,6 @@ class Account
         $this->updatedAt = new DateTimeImmutable();
         $this->conversations = new ArrayCollection();
     }
-
-    // ... существующие геттеры/сеттеры ...
 
     public function getId(): UuidInterface
     {
@@ -152,8 +152,6 @@ class Account
     {
         return $this->updatedAt;
     }
-
-    // === New: Conversations ===
 
     /**
      * @return Collection<int, Conversation>
