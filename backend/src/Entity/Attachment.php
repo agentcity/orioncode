@@ -47,7 +47,7 @@ class Attachment
         $this->createdAt = new DateTimeImmutable();
     }
 
-    // === Getters and Setters ===
+    // ... геттеры и сеттеры без изменений ...
 
     public function getId(): UuidInterface
     {
