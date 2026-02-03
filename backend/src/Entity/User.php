@@ -2,13 +2,14 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
 use DateTimeImmutable;
-use DateTimeInterface;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'users')]
@@ -43,14 +44,24 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $updatedAt;
 
+    // === Relations ===
+
+    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Account::class, cascade: ['remove'])]
+    private Collection $accounts;
+
+    #[ORM\OneToMany(mappedBy: 'assignedTo', targetEntity: Conversation::class)]
+    private Collection $conversations;
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
         $this->createdAt = new DateTimeImmutable();
         $this->updatedAt = new DateTimeImmutable();
+        $this->accounts = new ArrayCollection();
+        $this->conversations = new ArrayCollection();
     }
 
-    // === Getters and Setters ===
+    // === Getters and Setters (existing ones skipped for brevity) ===
 
     public function getId(): UuidInterface
     {
@@ -68,9 +79,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function getUserIdentifier(): string
     {
         return $this->email;
@@ -133,7 +141,6 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function getRoles(): array
     {
         $roles = $this->roles;
-        // guarantee every user at least has ROLE_USER
         if (empty($roles)) {
             $roles[] = 'ROLE_USER';
         }
@@ -146,15 +153,27 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         return $this;
     }
 
-    /**
-     * @see UserInterface
-     */
     public function eraseCredentials(): void
     {
-        // Если вы храните временные данные (например, plainPassword), очистите их здесь
     }
 
-    // === Lifecycle Callbacks ===
+    // === New: Relations Getters ===
+
+    /**
+     * @return Collection<int, Account>
+     */
+    public function getAccounts(): Collection
+    {
+        return $this->accounts;
+    }
+
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
 
     #[ORM\PreUpdate]
     public function updatedTimestamps(): void

@@ -2,6 +2,8 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
@@ -37,14 +39,20 @@ class Contact
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $updatedAt;
 
+    // === Relation ===
+
+    #[ORM\OneToMany(mappedBy: 'contact', targetEntity: Conversation::class, cascade: ['remove'])]
+    private Collection $conversations;
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
         $this->createdAt = new DateTimeImmutable();
         $this->updatedAt = new DateTimeImmutable();
+        $this->conversations = new ArrayCollection();
     }
 
-    // === Getters and Setters ===
+    // ... существующие геттеры/сеттеры ...
 
     public function getId(): UuidInterface
     {
@@ -116,7 +124,15 @@ class Contact
         return $this->updatedAt;
     }
 
-    // === Lifecycle Callbacks ===
+    // === New: Conversations ===
+
+    /**
+     * @return Collection<int, Conversation>
+     */
+    public function getConversations(): Collection
+    {
+        return $this->conversations;
+    }
 
     #[ORM\PreUpdate]
     public function updatedTimestamps(): void

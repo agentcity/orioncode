@@ -2,166 +2,168 @@
 
 namespace App\Entity;
 
+use Doctrine\Common\Collections\ArrayCollection;
+use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'conversations')]
+#[ORM\Table(name: 'messages')]
 #[ORM\HasLifecycleCallbacks]
-class Conversation
+class Message
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
     private UuidInterface $id;
 
-    #[ORM\ManyToOne(targetEntity: Account::class)]
+    #[ORM\ManyToOne(targetEntity: Conversation::class, inversedBy: 'messages')]
     #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Account $account;
-
-    #[ORM\ManyToOne(targetEntity: Contact::class)]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Contact $contact;
-
-    #[ORM\Column(type: 'string', length: 255)]
-    private string $externalId;
-
-    #[ORM\Column(type: 'string', length: 50)]
-    private string $type;
+    private Conversation $conversation;
 
     #[ORM\Column(type: 'string', length: 20)]
-    private string $status;
+    private string $senderType;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?DateTimeImmutable $lastMessageAt = null;
+    #[ORM\Column(type: 'uuid', nullable: true)]
+    private ?UuidInterface $senderId = null;
 
-    #[ORM\Column(type: 'integer')]
-    private int $unreadCount = 0;
+    #[ORM\Column(type: 'string', nullable: true)]
+    private ?string $externalId = null;
 
-    #[ORM\ManyToOne(targetEntity: User::class)]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
-    private ?User $assignedTo = null;
+    #[ORM\Column(type: 'text', nullable: true)]
+    private ?string $text = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $metadata = null;
+    private ?array $payload = null;
+
+    #[ORM\Column(type: 'boolean')]
+    private bool $isRead = false;
+
+    #[ORM\Column(type: 'string', length: 20)]
+    private string $direction;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private DateTimeImmutable $sentAt;
 
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $createdAt;
 
-    #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $updatedAt;
+    // === Relation ===
+
+    #[ORM\OneToMany(mappedBy: 'message', targetEntity: Attachment::class, cascade: ['persist', 'remove'])]
+    private Collection $attachments;
 
     public function __construct()
     {
         $this->id = Uuid::uuid4();
         $this->createdAt = new DateTimeImmutable();
-        $this->updatedAt = new DateTimeImmutable();
+        $this->attachments = new ArrayCollection();
     }
 
-    // === Getters and Setters ===
+    // ... существующие геттеры/сеттеры ...
 
     public function getId(): UuidInterface
     {
         return $this->id;
     }
 
-    public function getAccount(): Account
+    public function getConversation(): Conversation
     {
-        return $this->account;
+        return $this->conversation;
     }
 
-    public function setAccount(Account $account): self
+    public function setConversation(Conversation $conversation): self
     {
-        $this->account = $account;
+        $this->conversation = $conversation;
         return $this;
     }
 
-    public function getContact(): Contact
+    public function getSenderType(): string
     {
-        return $this->contact;
+        return $this->senderType;
     }
 
-    public function setContact(Contact $contact): self
+    public function setSenderType(string $senderType): self
     {
-        $this->contact = $contact;
+        $this->senderType = $senderType;
         return $this;
     }
 
-    public function getExternalId(): string
+    public function getSenderId(): ?UuidInterface
+    {
+        return $this->senderId;
+    }
+
+    public function setSenderId(?UuidInterface $senderId): self
+    {
+        $this->senderId = $senderId;
+        return $this;
+    }
+
+    public function getExternalId(): ?string
     {
         return $this->externalId;
     }
 
-    public function setExternalId(string $externalId): self
+    public function setExternalId(?string $externalId): self
     {
         $this->externalId = $externalId;
         return $this;
     }
 
-    public function getType(): string
+    public function getText(): ?string
     {
-        return $this->type;
+        return $this->text;
     }
 
-    public function setType(string $type): self
+    public function setText(?string $text): self
     {
-        $this->type = $type;
+        $this->text = $text;
         return $this;
     }
 
-    public function getStatus(): string
+    public function getPayload(): ?array
     {
-        return $this->status;
+        return $this->payload;
     }
 
-    public function setStatus(string $status): self
+    public function setPayload(?array $payload): self
     {
-        $this->status = $status;
+        $this->payload = $payload;
         return $this;
     }
 
-    public function getLastMessageAt(): ?DateTimeImmutable
+    public function isRead(): bool
     {
-        return $this->lastMessageAt;
+        return $this->isRead;
     }
 
-    public function setLastMessageAt(?DateTimeImmutable $lastMessageAt): self
+    public function setIsRead(bool $isRead): self
     {
-        $this->lastMessageAt = $lastMessageAt;
+        $this->isRead = $isRead;
         return $this;
     }
 
-    public function getUnreadCount(): int
+    public function getDirection(): string
     {
-        return $this->unreadCount;
+        return $this->direction;
     }
 
-    public function setUnreadCount(int $unreadCount): self
+    public function setDirection(string $direction): self
     {
-        $this->unreadCount = $unreadCount;
+        $this->direction = $direction;
         return $this;
     }
 
-    public function getAssignedTo(): ?User
+    public function getSentAt(): DateTimeImmutable
     {
-        return $this->assignedTo;
+        return $this->sentAt;
     }
 
-    public function setAssignedTo(?User $assignedTo): self
+    public function setSentAt(DateTimeImmutable $sentAt): self
     {
-        $this->assignedTo = $assignedTo;
-        return $this;
-    }
-
-    public function getMetadata(): ?array
-    {
-        return $this->metadata;
-    }
-
-    public function setMetadata(?array $metadata): self
-    {
-        $this->metadata = $metadata;
+        $this->sentAt = $sentAt;
         return $this;
     }
 
@@ -170,16 +172,32 @@ class Conversation
         return $this->createdAt;
     }
 
-    public function getUpdatedAt(): DateTimeImmutable
+    // === New: Attachments ===
+
+    /**
+     * @return Collection<int, Attachment>
+     */
+    public function getAttachments(): Collection
     {
-        return $this->updatedAt;
+        return $this->attachments;
     }
 
-    // === Lifecycle Callbacks ===
-
-    #[ORM\PreUpdate]
-    public function updatedTimestamps(): void
+    public function addAttachment(Attachment $attachment): self
     {
-        $this->updatedAt = new DateTimeImmutable('now');
+        if (!$this->attachments->contains($attachment)) {
+            $this->attachments->add($attachment);
+            $attachment->setMessage($this);
+        }
+        return $this;
+    }
+
+    public function removeAttachment(Attachment $attachment): self
+    {
+        if ($this->attachments->removeElement($attachment)) {
+            if ($attachment->getMessage() === $this) {
+                $attachment->setMessage(null);
+            }
+        }
+        return $this;
     }
 }
