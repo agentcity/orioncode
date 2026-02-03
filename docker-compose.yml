@@ -1,0 +1,121 @@
+# docker-compose.yml
+version: '3.8'
+
+services:
+    orion_backend:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        container_name: orion_backend
+        volumes:
+            - ./backend:/srv/backend:cached
+            - ./backend/php.ini:/usr/local/etc/php/conf.d/project.ini:ro
+        environment:
+            APP_ENV: dev
+            APP_DEBUG: '1'
+            APP_SECRET: '${APP_SECRET:-ChangeMeSecret}'
+            DATABASE_URL: "postgresql://${DB_USER:-app_user}:${DB_PASSWORD:-app_password}@orion_db:5432/${DB_NAME:-app_db}?serverVersion=13&charset=utf8"
+            MESSENGER_TRANSPORT_DSN: "redis://orion_redis:6379/0"
+        depends_on:
+            - orion_db
+            - orion_redis
+        networks:
+            - app_network
+        expose:
+            - "9000"
+
+    # nginx для проксирования php-fpm
+    orion_nginx:
+        image: nginx:1.26-alpine
+        container_name: orion_nginx
+        depends_on:
+            - orion_backend
+        ports:
+            - "8080:80"        # открываем nginx на localhost:8080
+        volumes:
+            - ./backend:/srv/backend:ro # монтируем публичную директорию Symfony
+            - ./nginx/default.conf:/etc/nginx/conf.d/default.conf:ro
+            - ./nginx/logs:/var/log/nginx  # опционально, для логов
+        networks:
+            - app_network
+        restart: unless-stopped
+
+    orion_worker:
+        build:
+            context: ./backend
+            dockerfile: Dockerfile
+        container_name: orion_worker
+        command: ["php", "/srv/backend/bin/console", "messenger:consume", "async", "-vv"]
+        volumes:
+            - ./backend:/srv/backend:cached
+            - ./backend/php.ini:/usr/local/etc/php/conf.d/project.ini:ro
+        environment:
+            APP_ENV: dev
+            APP_DEBUG: '1'
+            APP_SECRET: '${APP_SECRET:-ChangeMeSecret}'
+            DATABASE_URL: "postgresql://${DB_USER:-app_user}:${DB_PASSWORD:-app_password}@orion_db:5432/${DB_NAME:-app_db}?serverVersion=13&charset=utf8"
+            MESSENGER_TRANSPORT_DSN: "redis://orion_redis:6379/0"
+        depends_on:
+            - orion_db
+            - orion_redis
+            - orion_backend
+        networks:
+            - app_network
+
+
+    orion_db:
+        image: postgres:13-alpine
+        container_name: orion_db
+        environment:
+            POSTGRES_DB: ${DB_NAME:-app_db}
+            POSTGRES_USER: ${DB_USER:-app_user}
+            POSTGRES_PASSWORD: ${DB_PASSWORD:-app_password}
+        volumes:
+            - orion_db_data:/var/lib/postgresql/data
+        networks:
+            - app_network
+
+    orion_redis:
+        image: redis:6-alpine
+        container_name: orion_redis
+        ports:
+            - "6379:6379"
+        networks:
+            - app_network
+
+    orion_websocket:
+        build:
+            context: websocket
+            dockerfile: Dockerfile
+        container_name: orion_websocket
+        ports:
+            - "3000:3000"
+        environment:
+            REDIS_URL: "redis://orion_redis:6379"
+        depends_on:
+            - orion_redis
+        networks:
+            - app_network
+
+    orion_frontend:
+        build:
+            context: frontend
+            dockerfile: Dockerfile
+        container_name: orion_frontend
+        ports:
+            - "3001:3000"
+        environment:
+            - REACT_APP_API_URL=${REACT_APP_API_URL:-http://localhost/api}
+            - REACT_APP_WS_URL=${REACT_APP_WS_URL:-http://localhost:3000}
+        volumes:
+            - ./frontend:/app:cached
+            - /app/node_modules
+        networks:
+            - app_network
+
+volumes:
+    orion_db_data:
+
+networks:
+    app_network:
+        driver: bridge

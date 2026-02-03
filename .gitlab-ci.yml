@@ -1,0 +1,175 @@
+# .gitlab-ci.yml
+stages:
+  - lint
+  - test
+  - build
+  - publish
+  - deploy
+
+variables:
+  # Dind needs TLS disabled in this setup
+  DOCKER_TLS_CERTDIR: ""
+  # Тэги для образов
+  BACKEND_IMAGE: "$CI_REGISTRY_IMAGE/backend:${CI_COMMIT_SHORT_SHA}"
+  FRONTEND_IMAGE: "$CI_REGISTRY_IMAGE/frontend:${CI_COMMIT_SHORT_SHA}"
+  # Composer / npm behavior
+  COMPOSER_ALLOW_SUPERUSER: "1"
+  COMPOSER_MEMORY_LIMIT: "-1"
+  NPM_CONFIG_LOGLEVEL: "warn"
+
+# Кэш для composer и npm (ускоряет повторные pipeline)
+cache:
+  paths:
+    - vendor/
+    - backend/vendor/
+    - frontend/node_modules/
+    - .npm
+
+# -----------------------
+# LINT BACKEND
+# -----------------------
+lint:backend:
+  image: php:8.4-cli
+  stage: lint
+  before_script:
+    - apt-get update -yqq || true
+    - apt-get install -y --no-install-recommends git unzip
+    - php -v
+  script:
+    - cd backend
+    - curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+    - composer install --no-interaction --prefer-dist --no-progress
+    # Примеры линтеров/статической проверки (раскомментировать при наличии)
+    - if [ -f vendor/bin/phpcs ]; then vendor/bin/phpcs --standard=PSR12 src || true; fi
+    - if [ -f vendor/bin/phpstan ]; then vendor/bin/phpstan analyse -l 7; fi
+  artifacts:
+    when: always
+    reports:
+      codequality: report.json
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request" || $CI_COMMIT_BRANCH
+
+# -----------------------
+# LINT FRONTEND
+# -----------------------
+lint:frontend:
+  image: node:20
+  stage: lint
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit --no-fund
+  script:
+    - cd frontend
+    - if [ -f package.json ] && npm run | grep -q lint; then npm run lint; else echo "no lint script"; fi
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request" || $CI_COMMIT_BRANCH
+
+# -----------------------
+# TEST BACKEND
+# -----------------------
+test:backend:
+  image: php:8.4-cli
+  stage: test
+  services:
+    - name: postgres:14
+      alias: postgres
+  variables:
+    DATABASE_URL: "pgsql://postgres:postgres@postgres:5432/postgres"
+  before_script:
+    - apt-get update -yqq || true
+    - apt-get install -y --no-install-recommends git unzip libpq-dev
+    - curl -sS https://getcomposer.org/installer | php && mv composer.phar /usr/local/bin/composer
+    - cd backend
+    - composer install --no-interaction --prefer-dist --no-progress
+    # миграции/fixtures если нужно
+    - php bin/console doctrine:migrations:migrate --no-interaction || true
+  script:
+    - cd backend
+    - vendor/bin/phpunit --testsuite unit --stop-on-failure --verbose
+  artifacts:
+    paths:
+      - backend/build/logs/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request" || $CI_COMMIT_BRANCH
+
+# -----------------------
+# TEST FRONTEND
+# -----------------------
+test:frontend:
+  image: node:20
+  stage: test
+  before_script:
+    - cd frontend
+    - npm ci --prefer-offline --no-audit --no-fund
+  script:
+    - cd frontend
+    - if npm run | grep -q test; then npm test --silent -- --watchAll=false; else echo "no tests"; fi
+  artifacts:
+    when: always
+    paths:
+      - frontend/test-results/
+  rules:
+    - if: $CI_PIPELINE_SOURCE == "merge_request" || $CI_COMMIT_BRANCH
+
+# -----------------------
+# BUILD IMAGES (build & push)
+# -----------------------
+docker_build_and_push:
+  image: docker:24
+  stage: publish
+  services:
+    - name: docker:dind
+      alias: docker
+  variables:
+    DOCKER_HOST: tcp://docker:2375
+    DOCKER_DRIVER: overlay2
+  before_script:
+    - docker info
+    - echo "$CI_REGISTRY_PASSWORD" | docker login -u "$CI_REGISTRY_USER" --password-stdin $CI_REGISTRY
+  script:
+    # Backend image
+    - docker build --pull -t "$BACKEND_IMAGE" -f backend/Dockerfile backend
+    - docker push "$BACKEND_IMAGE"
+    # Frontend image
+    - docker build --pull -t "$FRONTEND_IMAGE" -f frontend/Dockerfile frontend
+    - docker push "$FRONTEND_IMAGE"
+    # optional: tag latest for main
+    - |
+      if [[ "$CI_COMMIT_BRANCH" == "main" ]]; then
+        docker tag "$BACKEND_IMAGE" "$CI_REGISTRY_IMAGE/backend:latest"
+        docker push "$CI_REGISTRY_IMAGE/backend:latest"
+        docker tag "$FRONTEND_IMAGE" "$CI_REGISTRY_IMAGE/frontend:latest"
+        docker push "$CI_REGISTRY_IMAGE/frontend:latest"
+      fi
+  rules:
+    - if: $CI_COMMIT_BRANCH
+  only:
+    - branches
+
+# -----------------------
+# DEPLOY to STAGING (SSH)
+# -----------------------
+deploy:staging:
+  image: alpine:3.19
+  stage: deploy
+  environment:
+    name: staging
+    url: https://staging.example.com
+  before_script:
+    - apk add --no-cache openssh-client bash curl
+    - mkdir -p ~/.ssh
+    - echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+    - |
+      if [ -n "$SSH_PRIVATE_KEY" ]; then
+        echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+        chmod 600 ~/.ssh/id_rsa
+      fi
+  script:
+    # пример: на удалённом сервере docker-compose pull && docker-compose up -d
+    - ssh -o StrictHostKeyChecking=yes "$DEPLOY_USER@$STAGING_HOST" \
+      "docker login -u $CI_REGISTRY_USER -p $CI_REGISTRY_PASSWORD $CI_REGISTRY && \
+      docker pull $BACKEND_IMAGE && docker pull $FRONTEND_IMAGE && \
+      cd /srv/orion && docker compose pull && docker compose up -d --remove-orphans"
+  only:
+    - main
+  when: manual
