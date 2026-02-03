@@ -26,3 +26,6 @@
 172.24.0.1 - - [03/Feb/2026:17:42:06 +0000] "GET /_wdt/3d3565?XDEBUG_IGNORE=1 HTTP/1.1" 200 17685 "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
 172.24.0.1 - - [03/Feb/2026:17:42:11 +0000] "GET /api/ HTTP/1.1" 404 236866 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
 172.24.0.1 - - [03/Feb/2026:17:42:11 +0000] "GET /_wdt/7466f8?XDEBUG_IGNORE=1 HTTP/1.1" 200 18240 "http://localhost:8080/api/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+172.24.0.1 - - [03/Feb/2026:19:17:06 +0000] "GET / HTTP/1.1" 404 74133 "-" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+172.24.0.1 - - [03/Feb/2026:19:17:06 +0000] "GET /_wdt/styles HTTP/1.1" 200 17444 "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
+172.24.0.1 - - [03/Feb/2026:19:17:07 +0000] "GET /_wdt/0ad73e?XDEBUG_IGNORE=1 HTTP/1.1" 200 17690 "http://localhost:8080/" "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/144.0.0.0 Safari/537.36"
