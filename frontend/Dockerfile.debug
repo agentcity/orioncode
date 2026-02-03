@@ -1,0 +1,30 @@
+# frontend/Dockerfile.debug
+FROM node:20-alpine
+
+WORKDIR /app
+
+# Инструменты для сборки нативных модулей и curl для проверки сети
+RUN apk add --no-cache python3 make g++ build-base curl ca-certificates git
+
+# Показать версии node и npm
+RUN node -v && npm -v
+
+ENV NPM_CONFIG_UNSAFE_PERM=true
+ENV NPM_CONFIG_LOGLEVEL=verbose
+ENV NODE_ENV=production
+
+# Копируем package-файлы (предполагается, что build context = ./frontend)
+COPY package.json package-lock.json* ./
+
+# Запускем npm ci с подробным выводом (no silent)
+RUN if [ -f package-lock.json ]; then \
+      echo "Running npm ci --verbose"; \
+      npm ci --prefer-offline --no-audit --no-fund --progress=false --loglevel=verbose; \
+    else \
+      echo "No package-lock.json — running npm install --verbose"; \
+      npm install --no-audit --no-fund --progress=false --loglevel=verbose; \
+    fi
+
+COPY . ./
+
+CMD ["sh", "-c", "echo build finished && ls -la node_modules | sed -n '1,50p'"]
