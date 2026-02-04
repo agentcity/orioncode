@@ -1,102 +1,134 @@
-// src/pages/DashboardPage.tsx
 import React, { useEffect, useState } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
-import { Box, Typography, AppBar, Toolbar, Button, List, ListItem, ListItemText, Divider } from '@mui/material';
+import { useNavigate, Routes, Route, useLocation } from 'react-router-dom';
+import { Box, Typography, AppBar, Toolbar, Button, List, ListItemButton, ListItemText, Avatar, Badge } from '@mui/material';
+import WhatsAppIcon from '@mui/icons-material/WhatsApp';
+import TelegramIcon from '@mui/icons-material/Telegram';
+import HubIcon from '@mui/icons-material/Hub';
 import axiosClient from '../api/axiosClient';
-import { Conversation, WebSocketMessagePayload } from '../types';
+import { Conversation } from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
+import ChatPage from './ChatPage';
 
 const DashboardPage: React.FC = () => {
     const { user, isAuthenticated, logout, loading } = useAuth();
     const navigate = useNavigate();
+    const location = useLocation();
+    const activeChatId = location.pathname.split('/').pop();
+
     const [conversations, setConversations] = useState<Conversation[]>([]);
-    const { latestMessage } = useWebSocket();
+    const { latestMessage } = useWebSocket(undefined, user?.id);
 
     useEffect(() => {
-        if (!isAuthenticated && !loading) {
-            navigate('/login');
-        } else if (isAuthenticated) {
-            fetchConversations();
+        if (!isAuthenticated && !loading) navigate('/login');
+        else if (isAuthenticated) fetchConversations();
+    }, [isAuthenticated, loading]);
+
+    // ЛОГИКА: Поднимаем чат вверх при ЛЮБОМ новом сообщении (входящем или нашем)
+    useEffect(() => {
+        if (latestMessage && latestMessage.conversationId) {
+            setConversations(prev => {
+                const index = prev.findIndex(c => c.id === latestMessage.conversationId);
+                const updatedList = [...prev];
+
+                if (index !== -1) {
+                    const targetChat = { ...updatedList[index] };
+                    targetChat.lastMessageAt = latestMessage.sentAt;
+
+                    // Счетчик: только для входящих и только если чат не открыт
+                    if (latestMessage.direction === 'incoming' && activeChatId !== latestMessage.conversationId) {
+                        targetChat.unreadCount = (targetChat.unreadCount || 0) + 1;
+                    }
+
+                    updatedList.splice(index, 1);
+                    return [targetChat, ...updatedList]; // Перемещаем в самое начало
+                }
+                return updatedList;
+            });
         }
-    }, [isAuthenticated, loading, navigate]);
+    }, [latestMessage, activeChatId]);
 
     useEffect(() => {
-        if (latestMessage) {
-            // Обновить список диалогов при получении нового сообщения через WS
-            setConversations(prevConversations =>
-                prevConversations.map(conv =>
-                    conv.id === latestMessage.conversationId
-                        ? { ...conv, lastMessageAt: new Date().toISOString(), unreadCount: conv.unreadCount + 1 } // Упрощенно
-                        : conv
-                )
-            );
-            // Опционально: отсортировать диалоги по lastMessageAt
-            setConversations(prev => [...prev].sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+        if (activeChatId && activeChatId !== 'dashboard') {
+            setConversations(prev => prev.map(c =>
+                c.id === activeChatId ? { ...c, unreadCount: 0 } : c
+            ));
         }
-    }, [latestMessage]);
+    }, [activeChatId]);
 
     const fetchConversations = async () => {
         try {
-            const response = await axiosClient.get<Conversation[]>('/conversations');
-            setConversations(response.data.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
-        } catch (error) {
-            console.error('Failed to fetch conversations:', error);
-        }
+            const res = await axiosClient.get<Conversation[]>('/conversations');
+            setConversations(res.data.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
+        } catch (err) { console.error(err); }
     };
 
-    if (loading) {
-        return <Typography>Loading dashboard...</Typography>;
-    }
+    if (loading) return <Typography sx={{p: 2}}>Загрузка...</Typography>;
 
     return (
-        <Box sx={{ flexGrow: 1 }}>
-            <AppBar position="static">
+        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+            <AppBar position="static" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider', zIndex: 1201 }}>
                 <Toolbar>
-                    <Typography variant="h6" component="div" sx={{ flexGrow: 1 }}>
-                        Messenger Aggregator
-                    </Typography>
-                    {user && (
-                        <Typography variant="body1" sx={{ mr: 2 }}>
-                            Welcome, {user.firstName || user.email}!
-                        </Typography>
-                    )}
-                    <Button color="inherit" onClick={logout}>
-                        Logout
-                    </Button>
+                    <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>ORION AGGREGATOR</Typography>
+                    <Button color="inherit" onClick={logout}>Выход</Button>
                 </Toolbar>
             </AppBar>
-            <Box sx={{ display: 'flex', height: 'calc(100vh - 64px)' }}> {/* Высота без AppBar */}
-                {/* Панель со списком чатов */}
-                <Box sx={{ width: 300, borderRight: 1, borderColor: 'divider', overflowY: 'auto' }}>
-                    <Typography variant="h6" sx={{ p: 2 }}>Conversations</Typography>
-                    <List>
+
+            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
+                {/* ЛЕВАЯ ПАНЕЛЬ: Фиксируем ширину и запрещаем сжатие */}
+                <Box sx={{
+                    width: 350,
+                    minWidth: 350,
+                    flexShrink: 0,
+                    borderRight: 1,
+                    borderColor: 'divider',
+                    overflowY: 'auto',
+                    bgcolor: 'white'
+                }}>
+                    <List sx={{ p: 0 }}>
                         {conversations.map((conv) => (
-                            <React.Fragment key={conv.id}>
-                                <ListItem
-                                    button
-                                    onClick={() => navigate(/chat/${conv.id})}
-                                    secondaryAction={
-                                        conv.unreadCount > 0 && (
-                                            <Box sx={{ bgcolor: 'primary.main', color: 'white', borderRadius: '50%', width: 24, height: 24, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: '0.8rem' }}>
-                                                {conv.unreadCount}
-                                            </Box>
-                                        )
+                            <ListItemButton
+                                key={conv.id}
+                                selected={activeChatId === conv.id}
+                                onClick={() => navigate(`/dashboard/chat/${conv.id}`)}
+                                sx={{ borderBottom: '1px solid #f5f5f5', py: 1.5 }}
+                            >
+                                <Badge
+                                    overlap="circular"
+                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                    badgeContent={
+                                        <Box sx={{ bgcolor: 'white', borderRadius: '50%', display: 'flex', boxShadow: 1, p: '1px' }}>
+                                            {conv.type === 'telegram' ? <TelegramIcon sx={{ fontSize: 16, color: '#24A1DE' }} /> : <WhatsAppIcon sx={{ fontSize: 16, color: '#25D366' }} />}
+                                        </Box>
                                     }
                                 >
-                                    <ListItemText
-                                        primary={${conv.contact.mainName} (${conv.type})}
-                                        secondary={new Date(conv.lastMessageAt).toLocaleString()}
-                                    />
-                                </ListItem>
-                                <Divider />
-                            </React.Fragment>
+                                    <Badge color="error" badgeContent={conv.unreadCount} invisible={conv.unreadCount === 0}>
+                                        <Avatar sx={{ bgcolor: '#eee', color: '#555' }}>{conv.contact.mainName[0]}</Avatar>
+                                    </Badge>
+                                </Badge>
+                                <ListItemText
+                                    sx={{ ml: 2, overflow: 'hidden' }}
+                                    primary={<Typography noWrap sx={{ fontWeight: conv.unreadCount > 0 ? 'bold' : 'normal' }}>{conv.contact.mainName}</Typography>}
+                                    secondary={<Typography variant="caption" color="primary">{conv.type.toUpperCase()}</Typography>}
+                                />
+                                <Typography variant="caption" color="text.secondary">
+                                    {new Date(conv.lastMessageAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
+                                </Typography>
+                            </ListItemButton>
                         ))}
                     </List>
                 </Box>
-                {/* Основная область контента (например, приветствие или пустой экран) */}
-                <Box sx={{ flexGrow: 1, p: 3 }}>
-                    <Typography variant="h5">Select a conversation to start chatting</Typography>
+
+                {/* ПРАВАЯ ПАНЕЛЬ: Занимает всё оставшееся место */}
+                <Box sx={{ flexGrow: 1, minWidth: 0, height: '100%', bgcolor: '#f0f2f5' }}>
+                    <Routes>
+                        <Route path="chat/:id" element={<ChatPage />} />
+                        <Route path="*" element={
+                            <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}>
+                                <Typography color="text.secondary">Выберите чат для начала общения</Typography>
+                            </Box>
+                        } />
+                    </Routes>
                 </Box>
             </Box>
         </Box>
@@ -104,4 +136,3 @@ const DashboardPage: React.FC = () => {
 };
 
 export default DashboardPage;
-

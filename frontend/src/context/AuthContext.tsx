@@ -50,9 +50,12 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     const logout = async () => {
         try {
-            await axiosClient.post('/logout'); // Пример эндпоинта
-            localStorage.removeItem('jwt_token'); // Если используете JWT
+            await axiosClient.post('/logout', {}, {
+                headers: { 'Content-Type': 'application/json' }
+            });
+            // После этого очищаем стейт на фронте
             setUser(null);
+            window.location.href = '/login';
         } catch (error) {
             console.error('Logout failed:', error);
         }

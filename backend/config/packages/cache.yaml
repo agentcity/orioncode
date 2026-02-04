@@ -1,5 +1,10 @@
 framework:
     cache:
+        # Указываем путь к Redis через переменную окружения
+        default_redis_provider: 'redis://orion_redis:6379'
+        prefix_seed: orion_app
+        app: cache.adapter.redis
+        system: cache.adapter.redis
         # Unique name of your app: used to compute stable namespaces for cache keys.
         #prefix_seed: your_vendor_name/app_name
 

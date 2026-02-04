@@ -47,7 +47,10 @@ class Message
     private bool $isRead = false;
 
     #[ORM\Column(type: 'string', length: 20)]
-    private string $direction;
+    private string $direction; // incoming, outgoing
+
+    #[ORM\Column(type: 'string', length: 20, options: ['default' => 'sent'])]
+    private string $status = 'sent'; // sent, delivered, read, replied, failed
 
     #[ORM\Column(type: 'datetime_immutable')]
     private DateTimeImmutable $sentAt;
@@ -155,6 +158,17 @@ class Message
     public function setDirection(string $direction): self
     {
         $this->direction = $direction;
+        return $this;
+    }
+
+    public function getStatus(): string
+    {
+        return $this->status;
+    }
+
+    public function setStatus(string $status): self
+    {
+        $this->status = $status;
         return $this;
     }
 

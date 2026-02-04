@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Account;
+namespace App\Controller\Api;
 
 use App\Entity\Account;
 use App\Repository\AccountRepository;

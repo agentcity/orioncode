@@ -1,0 +1,77 @@
+<?php
+
+namespace App\Command;
+
+use App\Entity\User;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Component\Console\Attribute\AsCommand;
+use Symfony\Component\Console\Command\Command;
+use Symfony\Component\Console\Input\InputArgument;
+use Symfony\Component\Console\Input\InputInterface;
+use Symfony\Component\Console\Output\OutputInterface;
+use Symfony\Component\Console\Style\SymfonyStyle;
+use Symfony\Component\PasswordHasher\Hasher\UserPasswordHasherInterface;
+
+#[AsCommand(
+    name: 'app:create-user',
+    description: 'Создает нового пользователя в базе данных',
+)]
+class CreateUserCommand extends Command
+{
+    // Мы убираем ручное объявление свойств и присвоение в теле конструктора
+    public function __construct(
+        private EntityManagerInterface $entityManager,
+        private UserPasswordHasherInterface $passwordHasher
+    ) {
+        parent::__construct();
+    }
+
+    protected function configure(): void {
+        $this->addArgument('email', InputArgument::OPTIONAL, 'Email', 'admin@admin.com')
+            ->addArgument('password', InputArgument::OPTIONAL, 'Pass', 'password');
+    }
+
+    protected function execute(InputInterface $input, OutputInterface $output): int
+    {
+        $io = new SymfonyStyle($input, $output);
+        $email = $input->getArgument('email');
+        $password = $input->getArgument('password');
+
+        // 1. Проверяем, не существует ли уже такой пользователь
+        $existingUser = $this->entityManager->getRepository(User::class)->findOneBy(['email' => $email]);
+        if ($existingUser) {
+            $io->error(sprintf('Пользователь с email %s уже существует!', $email));
+            return Command::FAILURE;
+        }
+
+        try {
+            // 2. Создаем объект User (UUID и даты создадутся в конструкторе сущности автоматически)
+            $user = new User();
+            $user->setEmail($email);
+            $user->setFirstName('Admin');
+            $user->setLastName('Orion');
+            $user->setIsActive(true);
+            $user->setRoles(['ROLE_ADMIN', 'ROLE_USER']);
+
+            // 3. Хешируем пароль
+            $hashedPassword = $this->passwordHasher->hashPassword($user, $password);
+            $user->setPassword($hashedPassword);
+
+            // 4. Сохраняем в базу
+            $this->entityManager->persist($user);
+            $this->entityManager->flush();
+
+            $io->success(sprintf('Пользователь %s успешно создан!', $email));
+            $io->info([
+                sprintf('Email: %s', $email),
+                sprintf('Password: %s', $password),
+                sprintf('UUID: %s', $user->getId()->toString()),
+            ]);
+
+            return Command::SUCCESS;
+        } catch (\Exception $e) {
+            $io->error('Ошибка при создании пользователя: ' . $e->getMessage());
+            return Command::FAILURE;
+        }
+    }
+}

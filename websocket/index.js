@@ -1,48 +1,59 @@
-// websocket/index.js
 const { Server } = require("socket.io");
 const Redis = require("ioredis");
 
-// Поддержка переменной REDIS_URL из окружения
 const redisUrl = process.env.REDIS_URL || "redis://orion_redis:6379";
 const subscriber = new Redis(redisUrl);
+const io = new Server({ cors: { origin: "*" } });
 
-const io = new Server({
-    cors: {
-        origin: "*",
-        methods: ["GET", "POST"]
-    }
-});
+const activeUsers = new Map();
 
 io.on("connection", (socket) => {
-    console.log("WS connected", socket.id);
+    socket.on("authenticate", (userId) => {
+        if (!userId) return;
+        socket.userId = userId;
+        socket.join(`user:${userId}`);
 
-    socket.on("authenticate", (token) => {
-        // TODO: validate token and join user rooms
-        // e.g. socket.join(`user:${userId}`)
-        console.log("Auth token received (TODO validate):", token);
+        if (!activeUsers.has(userId)) {
+            activeUsers.set(userId, new Set());
+            io.emit("newMessage", { event: "userStatusChanged", userId, status: true });
+        }
+        activeUsers.get(userId).add(socket.id);
+        console.log(`User ${userId} authenticated`);
+    });
+
+    socket.on("join_conversation", (conversationId) => {
+        socket.join(`conversation:${conversationId}`);
+        console.log(`Socket ${socket.id} joined conversation:${conversationId}`);
     });
 
     socket.on("disconnect", () => {
-        console.log("WS disconnected", socket.id);
+        if (socket.userId && activeUsers.has(socket.userId)) {
+            const sockets = activeUsers.get(socket.userId);
+            sockets.delete(socket.id);
+            if (sockets.size === 0) {
+                activeUsers.delete(socket.userId);
+                io.emit("newMessage", { event: "userStatusChanged", userId: socket.userId, status: false });
+            }
+        }
     });
 });
 
-subscriber.subscribe("new_message_channel", (err) => {
-    if (err) console.error("Redis subscribe error:", err);
-});
-
+subscriber.subscribe("new_message_channel");
 subscriber.on("message", (channel, message) => {
     try {
         const payload = JSON.parse(message);
+        console.log("Redis Message:", payload);
+
+        // КРИТИЧНО: Шлем всем в комнату беседы
         if (payload.conversationId) {
             io.to(`conversation:${payload.conversationId}`).emit("newMessage", payload);
-        } else {
-            io.emit("newMessage", payload);
         }
-    } catch (e) {
-        console.error("Failed to parse message:", e);
-    }
+
+        // Шлем персонально оператору для обновления списка чатов
+        if (payload.assignedToId) {
+            io.to(`user:${payload.assignedToId}`).emit("newMessage", payload);
+        }
+    } catch (e) { console.error(e); }
 });
 
 io.listen(3000);
-console.log("WebSocket server listening on :3000");

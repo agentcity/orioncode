@@ -1,53 +1,44 @@
-// src/hooks/useWebSocket.ts
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-import { WebSocketMessagePayload } from '../types';
 
 const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:3000';
 
-export const useWebSocket = () => {
-    const [isConnected, setIsConnected] = useState(false);
-    const [latestMessage, setLatestMessage] = useState<WebSocketMessagePayload | null>(null);
+export const useWebSocket = (conversationId?: string, userId?: string) => {
+    const [latestMessage, setLatestMessage] = useState<any>(null);
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
-        const socket = io(WS_URL);
-        socketRef.current = socket;
+        // Создаем сокет только если его еще нет
+        if (!socketRef.current) {
+            socketRef.current = io(WS_URL, {
+                transports: ["websocket"],
+                reconnection: true,
+                reconnectionAttempts: 5
+            });
+        }
+
+        const socket = socketRef.current;
 
         socket.on('connect', () => {
-            setIsConnected(true);
-            console.log('Connected to WebSocket server');
-            // TODO: Отправить токен для аутентификации на WS-сервере, если требуется
-            // socket.emit('authenticate', localStorage.getItem('jwt_token'));
+            console.log('WS: Connected');
+            if (userId) socket.emit('authenticate', userId);
+            if (conversationId) socket.emit('join_conversation', conversationId);
         });
 
-        socket.on('disconnect', () => {
-            setIsConnected(false);
-            console.log('Disconnected from WebSocket server');
-        });
-
-        socket.on('newMessage', (payload: WebSocketMessagePayload) => {
-            console.log('New message via WS:', payload);
+        socket.on('newMessage', (payload) => {
             setLatestMessage(payload);
         });
 
-        socket.on('connect_error', (error) => {
-            console.error('WebSocket connection error:', error);
+        // Слушаем смену статуса пользователя
+        socket.on('userStatusChanged', (data) => {
+            setLatestMessage({ event: 'userStatusChanged', ...data });
         });
 
         return () => {
-            socket.disconnect();
+            // ВАЖНО: Не дисконнектим сразу, чтобы избежать ошибок React Strict Mode
+            // или проверяем, если это окончательный демонтаж компонента
         };
-    }, []);
+    }, [conversationId, userId]);
 
-    // Функция для отправки сообщений через WebSocket (если нужно)
-    const sendMessage = (event: string, data: any) => {
-        if (socketRef.current && isConnected) {
-            socketRef.current.emit(event, data);
-        } else {
-            console.warn('WebSocket not connected, cannot send message.');
-        }
-    };
-
-    return { isConnected, latestMessage, sendMessage };
+    return { latestMessage, socket: socketRef.current };
 };

@@ -1,5 +1,5 @@
 // src/pages/LoginPage.tsx
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
 import { TextField, Button, Box, Typography, Alert } from '@mui/material';

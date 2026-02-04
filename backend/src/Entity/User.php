@@ -12,10 +12,9 @@ use Symfony\Component\Security\Core\User\UserInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'users', indexes: [
-    new ORM\Index(columns: ['email'], name: 'idx_user_email'),
-    new ORM\Index(columns: ['is_active'], name: 'idx_user_is_active')
-])]
+#[ORM\Table(name: 'users')]
+#[ORM\Index(columns: ['email'], name: 'idx_user_email')] // Вынесите индекс отдельно
+#[ORM\Index(columns: ['is_active'], name: 'idx_user_is_active')]
 #[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
