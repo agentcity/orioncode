@@ -18,6 +18,9 @@ RUN apk add --no-cache \
     curl \
     ca-certificates
 
+RUN pecl install redis \
+    && docker-php-ext-enable redis
+
 RUN docker-php-ext-install pdo pdo_pgsql pcntl mbstring zip intl opcache
 
 COPY --from=composer:2.6 /usr/bin/composer /usr/local/bin/composer

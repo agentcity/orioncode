@@ -1,11 +1,16 @@
 <?php
 
-use Symfony\Component\Routing\Annotation\Route;
-use Symfony\Component\HttpFoundation\JsonResponse;
-use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\Serializer\SerializerInterface;
+namespace App\Account;
+
 use App\Entity\Account;
 use App\Repository\AccountRepository;
+use EntityManagerInterface;
+use Request;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\JsonResponse;
+use Symfony\Component\Routing\Annotation\Route;
+use Symfony\Component\Serializer\SerializerInterface;
+
 
 class AccountController extends AbstractController
 {
@@ -22,9 +27,17 @@ class AccountController extends AbstractController
     }
 
     #[Route('/api/accounts', name: 'api_accounts_create', methods: ['POST'])]
-    public function create(Request $request, SerializerInterface $serializer, EntityManagerInterface $entityManager): JsonResponse
-    {
-        $account = $serializer->deserialize($request->getContent(), Account::class, 'json', ['groups' => ['account:write']]);
+    public function create(
+        Request $request,
+        SerializerInterface $serializer,
+        EntityManagerInterface $entityManager
+    ): JsonResponse {
+        $account = $serializer->deserialize(
+            $request->getContent(),
+            Account::class,
+            'json',
+            ['groups' => ['account:write']]
+        );
         $account->setUser($this->getUser()); // Присваиваем текущего пользователя
         // ... дополнительная валидация и обработка credentials (шифрование!)
 

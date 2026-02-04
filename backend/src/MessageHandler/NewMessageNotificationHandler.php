@@ -1,16 +1,17 @@
 <?php
+
 namespace App\MessageHandler;
 
 use App\Message\NewMessageNotification;
 use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Redis; // Или Predis/PhpRedis
+use Predis\ClientInterface;
 
 #[AsMessageHandler]
 class NewMessageNotificationHandler
 {
-    private Redis $redis; // Или другой клиент Redis
+    private ClientInterface $redis; // Или другой клиент Redis
 
-    public function __construct(Redis $redis) // Или через DI с Redis client
+    public function __construct(ClientInterface $redis) // Или через DI с Redis client
     {
         $this->redis = $redis;
     }

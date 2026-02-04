@@ -21,3 +21,6 @@ services:
 
     # add more service definitions when explicit configuration is needed
     # please note that last definitions always *replace* previous ones
+
+    # Создаем алиас: когда Symfony видит ClientInterface, она отдает клиент 'default'
+    Predis\ClientInterface: '@snc_redis.default'

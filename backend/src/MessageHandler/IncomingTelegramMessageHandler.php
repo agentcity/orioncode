@@ -1,18 +1,18 @@
 <?php
 
+
 namespace App\MessageHandler;
 
+use App\Entity\Contact;
+use App\Entity\Conversation;
+use App\Entity\Message;
 use App\Message\IncomingTelegramMessage;
-use Symfony\Component\Messenger\Attribute\AsMessageHandler;
-use Symfony\Component\Messenger\MessageBusInterface;
 use App\Message\NewMessageNotification;
 use App\Repository\AccountRepository;
 use Doctrine\ORM\EntityManagerInterface;
 use Psr\Log\LoggerInterface;
-use App\Entity\Message;
-use App\Entity\Conversation;
-use App\Entity\Contact;
-
+use Symfony\Component\Messenger\Attribute\AsMessageHandler;
+use Symfony\Component\Messenger\MessageBusInterface;
 
 
 #[AsMessageHandler]
@@ -24,8 +24,12 @@ class IncomingTelegramMessageHandler
     private MessageBusInterface $messageBus;
 
 
-    public function __construct(AccountRepository $accountRepository, EntityManagerInterface $entityManager, LoggerInterface $logger, MessageBusInterface $messageBus)
-    {
+    public function __construct(
+        AccountRepository $accountRepository,
+        EntityManagerInterface $entityManager,
+        LoggerInterface $logger,
+        MessageBusInterface $messageBus
+    ) {
         $this->accountRepository = $accountRepository;
         $this->entityManager = $entityManager;
         $this->logger = $logger;
@@ -38,7 +42,8 @@ class IncomingTelegramMessageHandler
         $payload = $message->getPayload();
 
         // 1. Найти Account по токену
-        $account = $this->accountRepository->findOneBy(['credentials.token' => $token]); // Потребуется кастомный репозиторий или дешифровка
+        $account = $this->accountRepository->findOneBy(['credentials.token' => $token]
+        ); // Потребуется кастомный репозиторий или дешифровка
         if (!$account) {
             $this->logger->warning('Telegram account not found for token: ' . $token);
             return;
@@ -58,7 +63,9 @@ class IncomingTelegramMessageHandler
         $senderName = $telegramMessage['from']['first_name'] ?? 'Unknown';
 
         // 3. Найти или создать Contact
-        $contact = $this->entityManager->getRepository(Contact::class)->findOneBy(['externalId' => (string)$fromId, 'type' => 'telegram']);
+        $contact = $this->entityManager->getRepository(Contact::class)->findOneBy(
+            ['externalId' => (string)$fromId, 'type' => 'telegram']
+        );
         if (!$contact) {
             $contact = new Contact();
             $contact->setExternalId((string)$fromId);

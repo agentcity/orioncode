@@ -66,6 +66,8 @@ services:
     orion_db:
         image: postgres:13-alpine
         container_name: orion_db
+        ports:
+            - "5432:5432"
         environment:
             POSTGRES_DB: ${DB_NAME:-app_db}
             POSTGRES_USER: ${DB_USER:-app_user}

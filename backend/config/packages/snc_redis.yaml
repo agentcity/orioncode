@@ -1,0 +1,10 @@
+snc_redis:
+    clients:
+        default:
+            type: predis # или 'predis', если используете его
+            alias: default
+            dsn: "%env(REDIS_URL)%"
+            logging: false
+            options:
+                connection_timeout: 5
+                read_write_timeout: 5
