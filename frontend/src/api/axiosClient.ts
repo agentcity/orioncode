@@ -1,7 +1,6 @@
 // src/api/axiosClient.ts
 import axios from 'axios';
-
-const API_URL = process.env.REACT_APP_API_URL || 'http://localhost:8080/api'; // Убедитесь, что это соответствует вашему Nginx
+import { API_URL } from './config';
 
 const axiosClient = axios.create({
     baseURL: API_URL,
@@ -14,10 +13,14 @@ const axiosClient = axios.create({
 axiosClient.interceptors.request.use((config) => {
     // Можно добавить токен авторизации, если используете JWT
     const token = localStorage.getItem('jwt_token');
-    if (token) {
+    // Проверяем существование headers перед записью
+    if (token && config.headers) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+    
     return config;
+}, (error) => {
+    return Promise.reject(error);
 });
 
 axiosClient.interceptors.response.use(

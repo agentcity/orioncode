@@ -72,5 +72,12 @@
   docker build -t myrepo/orion_frontend:local -f frontend/Dockerfile frontend
 
 - Использовать docker-compose build:
-  ocker-compose build --no-cache
+  docker-compose build --no-cache
   docker-compose up -d
+  
+docker compose up -d --build
+docker-compose restart orion_frontend 
+docker exec orion_backend php bin/console cache:clear
+
+docker exec orion_backend tail -n 20 var/log/dev.log
+  

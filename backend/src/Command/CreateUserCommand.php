@@ -27,8 +27,8 @@ class CreateUserCommand extends Command
     }
 
     protected function configure(): void {
-        $this->addArgument('email', InputArgument::OPTIONAL, 'Email', 'admin@admin.com')
-            ->addArgument('password', InputArgument::OPTIONAL, 'Pass', 'password');
+        $this->addArgument('email', InputArgument::OPTIONAL, 'Email', 'a@a.ru')
+            ->addArgument('password', InputArgument::OPTIONAL, 'Pass', '111111');
     }
 
     protected function execute(InputInterface $input, OutputInterface $output): int

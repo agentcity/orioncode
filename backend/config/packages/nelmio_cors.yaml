@@ -1,10 +1,15 @@
 nelmio_cors:
     defaults:
         origin_regex: true
-        allow_origin: ['^http://localhost:[0-9]+$']
+        allow_origin: ['*']
         allow_methods: ['GET', 'OPTIONS', 'POST', 'PUT', 'PATCH', 'DELETE']
-        allow_headers: ['Content-Type', 'Authorization', 'X-Requested-With']
+        allow_headers: ['*']
         allow_credentials: true
+        expose_headers: ['Authorization']
         max_age: 3600
     paths:
-        '^/api/': ~
+        '^/api/':
+            allow_origin: ['*'] # Для разработки можно временно разрешить всем
+            allow_headers: ['*']
+            allow_methods: ['POST', 'PUT', 'GET', 'DELETE', 'OPTIONS']
+            max_age: 3600

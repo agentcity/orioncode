@@ -1,7 +1,6 @@
 import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
-
-const WS_URL = process.env.REACT_APP_WS_URL || 'http://localhost:3000';
+import { WS_URL } from '../api/config'
 
 export const useWebSocket = (conversationId?: string, userId?: string) => {
     const [latestMessage, setLatestMessage] = useState<any>(null);

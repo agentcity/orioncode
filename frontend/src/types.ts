@@ -44,7 +44,7 @@ export interface Message {
     isRead: boolean;
     direction: 'inbound' | 'outbound';
     sentAt: string;
-    // ... другие поля Message, например, attachments
+    status: 'sent' | 'delivered' | 'read' | 'replied' | 'failed' | string;
 }
 
 // Для WebSocket уведомлений

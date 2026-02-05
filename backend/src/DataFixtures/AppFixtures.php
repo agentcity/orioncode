@@ -23,7 +23,7 @@ class AppFixtures extends Fixture
     {
         // 1. Создаем тестового пользователя (Администратора)
         $user = new User();
-        $user->setEmail('admin@admin.com');
+        $user->setEmail('a@a.com');
         $user->setPassword($this->hasher->hashPassword($user, 'password'));
         $user->setRoles(['ROLE_ADMIN']);
         $user->setFirstName('Admin');
