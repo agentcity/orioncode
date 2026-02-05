@@ -43,6 +43,10 @@ export interface Message {
     text?: string;
     isRead: boolean;
     direction: 'inbound' | 'outbound';
+    payload?: {
+        filePath?: string;
+        [key: string]: any;
+    };
     sentAt: string;
     status: 'sent' | 'delivered' | 'read' | 'replied' | 'failed' | string;
 }

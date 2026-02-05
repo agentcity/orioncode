@@ -8,6 +8,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
+use Symfony\Component\Serializer\Annotation\Groups;
 
 #[ORM\Entity]
 #[ORM\Table(name: 'messages', indexes: [
@@ -41,6 +42,7 @@ class Message
     private ?string $text = null;
 
     #[ORM\Column(type: 'json', nullable: true)]
+    #[Groups(['chat'])]
     private ?array $payload = null;
 
     #[ORM\Column(type: 'boolean')]

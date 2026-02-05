@@ -73,6 +73,10 @@ class Conversation
     #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, cascade: ['persist', 'remove'])]
     private Collection $messages;
 
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(nullable: true)]
+    private ?User $targetUser = null;
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
@@ -227,4 +231,13 @@ class Conversation
     {
         $this->updatedAt = new DateTimeImmutable('now');
     }
+
+    public function getDisplayName(): string
+    {
+        if ($this->type === 'internal' && $this->targetUser) {
+            return $this->targetUser->getFirstName() . ' ' . $this->targetUser->getLastName();
+        }
+        return $this->contact ? $this->contact->getMainName() : 'Системный чат';
+    }
+
 }

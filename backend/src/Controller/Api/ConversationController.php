@@ -66,4 +66,33 @@ class ConversationController extends AbstractController
         return $this->json(['status' => 'success']);
     }
 
+    #[Route('/api/conversations/internal', methods: ['POST'])]
+    public function startInternalChat(Request $request, EntityManagerInterface $em, UserRepository $userRepo): JsonResponse
+    {
+        $data = json_decode($request->getContent(), true);
+        $targetUser = $userRepo->find($data['userId']);
+        $currentUser = $this->getUser();
+
+        // Проверяем, нет ли уже такого чата
+        $existing = $em->getRepository(Conversation::class)->findOneBy([
+            'type' => 'internal',
+            'assignedTo' => $currentUser,
+            'targetUser' => $targetUser
+        ]);
+
+        if ($existing) return $this->json($existing, 200, [], ['groups' => 'chat']);
+
+        $conversation = new Conversation();
+        $conversation->setType('internal');
+        $conversation->setAssignedTo($currentUser);
+        $conversation->setTargetUser($targetUser);
+        $conversation->setLastMessageAt(new \DateTimeImmutable());
+        $conversation->setStatus('active');
+
+        $em->persist($conversation);
+        $em->flush();
+
+        return $this->json($conversation, 201, [], ['groups' => 'chat']);
+    }
+
 }

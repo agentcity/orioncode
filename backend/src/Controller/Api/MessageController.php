@@ -2,6 +2,8 @@
 
 namespace App\Controller\Api;
 
+use Symfony\Component\Filesystem\Filesystem;
+use Symfony\Component\Uid\Uuid;
 use App\Entity\Conversation;
 use App\Entity\Message;
 use App\Message\SendMessage;
@@ -36,6 +38,7 @@ class MessageController extends AbstractController
             'id' => $m->getId()->toString(),
             'text' => $m->getText(),
             'direction' => $m->getDirection(),
+            'payload' => $m->getPayload(),
             'status' => $m->getStatus(),
             'senderType' => $m->getSenderType(),
             'sentAt' => $m->getSentAt()->format(\DateTime::ATOM),
@@ -60,47 +63,76 @@ class MessageController extends AbstractController
         MessageBusInterface $bus,
         MessageRepository $repository
     ): JsonResponse {
+        // Увеличиваем лимит памяти для обработки фото
+        ini_set('memory_limit', '256M');
+
         $data = json_decode($request->getContent(), true);
 
         if (empty($data['text'])) {
             return $this->json(['error' => 'Text is required'], 400);
         }
+        try {
+            $message = new Message();
+            $message->setConversation($conversation);
+            $message->setText($data['text'] ?? '');
+            $message->setDirection('outgoing'); // Обязательно
+            $message->setSenderType('user');    // Обязательно
+            $message->setStatus('sent');        // Наш новый статус
+            $message->setIsRead(true);
+            $message->setSentAt(new \DateTimeImmutable());
 
-        $message = new Message();
-        $message->setConversation($conversation);
-        $message->setText($data['text']);
-        $message->setDirection('outgoing'); // Обязательно
-        $message->setSenderType('user');    // Обязательно
-        $message->setStatus('sent');        // Наш новый статус
-        $message->setIsRead(true);
-        $message->setSentAt(new \DateTimeImmutable());
+            // Если в Entity Message свойство $id не инициализируется в конструкторе:
+            // $message->setId(\Ramsey\Uuid\Uuid::uuid4());
 
-        // Если в Entity Message свойство $id не инициализируется в конструкторе:
-        // $message->setId(\Ramsey\Uuid\Uuid::uuid4());
+            if (!empty($data['attachment'])) {
+                $base64String = $data['attachment'];
+                // Убираем заголовок base64, если он есть
+                if (str_contains($base64String, ',')) {
+                    $base64String = explode(',', $base64String)[1];
+                }
 
-        $em->persist($message);
+                $imageData = base64_decode($base64String);
+                if (!$imageData) throw new \Exception('Invalid base64 data');
 
-        // Помечаем старые сообщения как отвеченные
-        $incoming = $repository->findBy(['conversation' => $conversation, 'direction' => 'incoming', 'isRead' => false]);
-        foreach ($incoming as $inc) {
-            $inc->setStatus('replied');
-            $inc->setIsRead(true);
+                $fileName = bin2hex(random_bytes(10)) . '.jpg';
+                $publicPath = '/uploads/chat/' . $fileName;
+                $uploadDir = $this->getParameter('kernel.project_dir') . '/public/uploads/chat/';
+
+                if (!is_dir($uploadDir)) {
+                    mkdir($uploadDir, 0777, true);
+                }
+
+                file_put_contents($uploadDir . $fileName, $imageData);
+                $message->setPayload(['filePath' => $publicPath]);
+            }
+
+            $em->persist($message);
+
+            // Помечаем старые сообщения как отвеченные
+            $incoming = $repository->findBy(['conversation' => $conversation, 'direction' => 'incoming', 'isRead' => false]);
+            foreach ($incoming as $inc) {
+                $inc->setStatus('replied');
+                $inc->setIsRead(true);
+            }
+
+            $conversation->setUnreadCount(0);
+            $conversation->setLastMessageAt($message->getSentAt());
+
+            $em->flush(); // КРИТИЧНО: без этого ничего не запишется
+
+            // Отправка в Redis через Messenger
+            $bus->dispatch(new \App\Message\SendMessage($message->getId()->toString()));
+
+            return $this->json([
+                'id' => $message->getId()->toString(),
+                'text' => $message->getText(),
+                'direction' => $message->getDirection(),
+                'payload' => $message->getPayload(),
+                'status' => $message->getStatus(),
+                'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
+            ], 201);
+        } catch (\Exception $e) {
+            return $this->json(['error' => $e->getMessage()], 500);
         }
-
-        $conversation->setUnreadCount(0);
-        $conversation->setLastMessageAt($message->getSentAt());
-
-        $em->flush(); // КРИТИЧНО: без этого ничего не запишется
-
-        // Отправка в Redis через Messenger
-        $bus->dispatch(new \App\Message\SendMessage($message->getId()->toString()));
-
-        return $this->json([
-            'id' => $message->getId()->toString(),
-            'text' => $message->getText(),
-            'direction' => $message->getDirection(),
-            'status' => $message->getStatus(),
-            'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
-        ], 201);
     }
 }
