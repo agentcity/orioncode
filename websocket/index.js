@@ -38,22 +38,32 @@ io.on("connection", (socket) => {
     });
 });
 
-subscriber.subscribe("new_message_channel");
+subscriber.subscribe("chat_messages");
+// 1. Подписываемся на правильный канал
+subscriber.subscribe("chat_messages", (err, count) => {
+    if (err) console.error("❌ Redis subscribe error:", err);
+    console.log(`📡 Subscribed to chat_messages. Channels active: ${count}`);
+});
+
+// 2. Обрабатываем сообщение
 subscriber.on("message", (channel, message) => {
+    console.log("📥 Received from Redis:", message);
     try {
-        const payload = JSON.parse(message);
-        console.log("Redis Message:", payload);
+        const data = JSON.parse(message);
 
-        // КРИТИЧНО: Шлем всем в комнату беседы
-        if (payload.conversationId) {
-            io.to(`conversation:${payload.conversationId}`).emit("newMessage", payload);
-        }
+        // У тебя в логе данные приходят в корне или в payload.
+        // Если PHP шлет {"conversationId": "...", "payload": {...}}
+        const conversationId = data.conversationId;
+        const msgPayload = data.payload;
 
-        // Шлем персонально оператору для обновления списка чатов
-        if (payload.assignedToId) {
-            io.to(`user:${payload.assignedToId}`).emit("newMessage", payload);
+        if (conversationId) {
+            // Шлем в комнату с префиксом conversation: (как у тебя в join_conversation)
+            io.to(`conversation:${conversationId}`).emit("newMessage", msgPayload);
+            console.log(`🚀 Broadcasted to conversation:${conversationId}`);
         }
-    } catch (e) { console.error(e); }
+    } catch (e) {
+        console.error("❌ Parse error:", e);
+    }
 });
 
 io.listen(3000);

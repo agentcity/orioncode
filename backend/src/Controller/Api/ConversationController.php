@@ -68,12 +68,26 @@ class ConversationController extends AbstractController
     {
         $user = $this->getUser();
 
-        // РАЗРЕШАЕМ ДОСТУП: если пользователь либо владелец, либо собеседник
+        // Проверка доступа
         if ($conversation->getAssignedTo() !== $user && $conversation->getTargetUser() !== $user) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
 
-        return $this->json($conversation, 200, [], ['groups' => 'chat']);
+        // Определяем имя для шапки чата
+        if ($conversation->getType() === 'internal') {
+            $recipient = ($conversation->getAssignedTo() === $user) ? $conversation->getTargetUser() : $conversation->getAssignedTo();
+            $contactName = $recipient ? ($recipient->getFirstName() . ' ' . $recipient->getLastName()) : 'Коллега';
+        } else {
+            $contactName = $conversation->getContact() ? $conversation->getContact()->getMainName() : 'Клиент';
+        }
+
+        return $this->json([
+            'id' => $conversation->getId()->toString(),
+            'type' => $conversation->getType(),
+            'contact' => [
+                'mainName' => $contactName,
+            ]
+        ]);
     }
 
     #[Route('/internal', name: 'api_conversations_create_internal', methods: ['POST'], priority: 2)]

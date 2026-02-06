@@ -15,7 +15,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Messenger\MessageBusInterface;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
-
+use Symfony\Component\Cache\Adapter\RedisAdapter;
 
 #[Route('/api/conversations/{id}/messages')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -142,6 +142,32 @@ class MessageController extends AbstractController
             $message->setPayload($payload);
 
             $em->flush(); // КРИТИЧНО: без этого ничего не запишется
+
+            // ПУБЛИКАЦИЯ В REDIS (для Socket.io)
+            try {
+                $redis = new \Redis();
+                $redis->connect('orion_redis', 6379);
+
+                // Собираем данные вручную, чтобы точно не было пустых скобок []
+                $data = [
+                    'conversationId' => $conversation->getId()->toString(),
+                    'payload' => [
+                        'id' => $message->getId()->toString(),
+                        'text' => $message->getText(),
+                        'direction' => $message->getDirection(),
+                        'status' => $message->getStatus(),
+                        'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
+                        'payload' => [
+                            'senderId' => $this->getUser()->getId()->toString(),
+                            'filePath' => $message->getPayload()['filePath'] ?? null
+                        ]
+                    ]
+                ];
+
+                $redis->publish('chat_messages', json_encode($data));
+            } catch (\Exception $e) {
+                error_log($e->getMessage());
+            }
 
             // Отправка в Redis через Messenger
             $bus->dispatch(new \App\Message\SendMessage($message->getId()->toString()));

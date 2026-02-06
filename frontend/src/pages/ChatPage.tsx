@@ -61,18 +61,29 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
         if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
             setIsContactOnline(latestMessage.status);
         }
-        if (latestMessage.conversationId === id && !latestMessage.event) {
+        if (latestMessage.conversationId === id) {
+            setMessages(prev => {
+                // Если сообщение уже есть в списке (по ID), ничего не делаем
+                if (prev.some(m => m.id === latestMessage.id)) return prev;
 
-            // ПАТЧ: Если в сокете нет senderId, но мы знаем что это наше сообщение (outbound)
-            const patchedMessage = {
-                ...latestMessage,
-                payload: latestMessage.payload || { senderId: latestMessage.direction === 'outbound' ? currentUser?.id : 'other' }
-            };
+                // Если пришло сообщение, которое заменяет наше "временное" (совпадает текст)
+                // Но лучше просто добавлять, если ID уникален
+                const newMessage = {
+                    ...latestMessage,
+                    // Важно: пробрасываем senderId для правильного отображения сторон
+                    payload: latestMessage.payload || {
+                        senderId: latestMessage.direction === 'outbound' ? currentUser?.id : 'other'
+                    }
+                };
 
-            setMessages(prev => prev.some(m => m.id === patchedMessage.id) ? prev : [...prev, patchedMessage as Message]);
-            setTimeout(scrollToBottom, 50);
+                return [...prev, newMessage as Message];
+            });
+
+            // Автопрокрутка вниз при новом сообщении
+            setTimeout(scrollToBottom, 100);
+
         }
-    }, [latestMessage, id, conversation]);
+    }, [latestMessage, id, conversation, currentUser]);
 
     const fetchChat = async () => {
         try {
@@ -101,7 +112,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 setMessages(prev => [...prev, {
                     id: tempId, text: "📷 Фото", direction: 'outbound', status: 'sent',
                     sentAt: new Date().toISOString(), conversationId: id!,
-                    preview: base64Data, isUploading: true
+                    preview: base64Data, isUploading: true, payload: { senderId: currentUser?.id }
                 } as any]);
                 setTimeout(scrollToBottom, 50);
 
@@ -125,7 +136,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
         setMessages(prev => [...prev, {
             id: tempId, text, direction: 'outbound', status: 'sent',
             sentAt: new Date().toISOString(), conversationId: id,
-            senderType: 'user', isRead: true
+            senderType: 'user', isRead: true, payload: { senderId: currentUser?.id }
         } as Message]);
         setTimeout(scrollToBottom, 50);
 
@@ -150,6 +161,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
     if (!conversation) return <Box sx={{ p: 3 }}><CircularProgress /></Box>;
 
+
     return (
         <Box sx={{ display: 'flex', flexDirection: 'column', height: '100%', position: 'relative', minWidth: 0 }}>
             {/* Header */}
@@ -160,7 +172,10 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 </StyledBadge>
                 <Box sx={{ ml: 2, minWidth: 0 }}>
                     <Box sx={{ display: 'flex', alignItems: 'center' }}>
-                        <Typography noWrap variant="subtitle1" sx={{ fontWeight: 'bold' }}>{conversation.contact?.mainName || 'Беседа'}</Typography>
+                        <Typography noWrap variant="subtitle1" sx={{ fontWeight: 'bold' }}>
+                            {/* Берем имя контакта, которое мы настроили в контроллере */}
+                            {conversation.contact?.mainName || 'Беседа'}
+                        </Typography>
                         {getChannelIcon(conversation.type)}
                     </Box>
                     <Typography variant="caption" color={isContactOnline ? "#44b700" : "text.secondary"}>
@@ -218,8 +233,10 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                                     <Typography variant="caption" sx={{ opacity: 0.6, mr: 0.5, fontSize: '0.75rem' }}>
                                         {new Date(msg.sentAt).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}
                                     </Typography>
-                                    {msg.direction === 'outbound' && (
-                                        msg.status === 'read' ? <DoneAllIcon sx={{ fontSize: 18, color: '#2196f3' }} /> : <DoneIcon sx={{ fontSize: 18, opacity: 0.4 }} />
+                                    {isMine && (
+                                        msg.status === 'read' || msg.isRead
+                                            ? <DoneAllIcon sx={{ fontSize: 18, color: '#2196f3' }} />
+                                            : <DoneIcon sx={{ fontSize: 18, opacity: 0.4 }} />
                                     )}
                                 </Box>
                             </Paper>

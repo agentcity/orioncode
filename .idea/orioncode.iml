@@ -146,6 +146,9 @@
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/ux-turbo" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/uid" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/polyfill-uuid" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/lcobucci/jwt" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/mercure-bundle" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/mercure" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />
