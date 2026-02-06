@@ -56,27 +56,34 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
         }
     }, [id]);
 
+
     useEffect(() => {
-        if (!latestMessage) return;
+        if (!latestMessage || latestMessage.event) return;
 
-        // Если это сообщение из сокета и оно не системное событие
-        if (!latestMessage.event) {
-            setMessages(prev => {
-                // Если сообщение уже есть в списке (по ID), не дублируем
-                if (prev.some(m => m.id === latestMessage.id)) return prev;
-                return [...prev, latestMessage];
-            });
+        setMessages(prev => {
+            // 1. Проверяем по ID (уже есть в базе)
+            if (prev.some(m => m.id === latestMessage.id)) return prev;
 
-            // ВАЖНО: Сразу скроллим вниз
-            setTimeout(scrollToBottom, 100);
+            // 2. Проверяем "оптимистичные" сообщения (те, что мы отправили сами)
+            // Если в списке есть сообщение с таким же текстом, отправленное менее 2 секунд назад
+            // и оно помечено как 'outbound', заменяем его или игнорируем дубль
+            const isDuplicate = prev.some(m =>
+                m.text === latestMessage.text &&
+                m.direction === 'outbound' &&
+                (new Date().getTime() - new Date(m.sentAt).getTime() < 2000)
+            );
 
-            // Звук только если сообщение чужое
-            // const isMine = String(latestMessage.payload?.senderId) === String(currentUser?.id);
-            // if (!isMine) {
-            //     audioRef.current.play().catch(() => {});
-            // }
-        }
-    }, [latestMessage, currentUser?.id]);
+            if (isDuplicate && latestMessage.direction === 'inbound') {
+                // Если это пришло наше же сообщение из сокета, просто игнорируем его,
+                // так как мы его уже отрисовали через handleSend/takePhoto
+                return prev;
+            }
+
+            return [...prev, latestMessage as Message];
+        });
+
+        setTimeout(scrollToBottom, 50);
+    }, [latestMessage]);
 
     const fetchChat = async () => {
         try {
@@ -184,7 +191,9 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
             }}>
                 {messages.map((msg: any) => {
                     const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
-                    const imageSrc = msg.preview || (msg.payload?.filePath ? `${serverBase}${msg.payload.filePath}` : null);
+                    const imageSrc = msg.preview ||
+                        (msg.payload?.filePath ? `${serverBase}${msg.payload.filePath}` : null) ||
+                        (msg.attachments?.[0]?.url ? `${serverBase}${msg.attachments[0].url}` : null);
                     const isMine = conversation.type === 'internal'
                         ? (String(msg.payload?.senderId).toLowerCase() === String(currentUser?.id).toLowerCase())
                         : (msg.direction === 'outbound' || msg.direction === 'outgoing');

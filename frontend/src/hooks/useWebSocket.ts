@@ -7,29 +7,46 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
-        const socket = socketRef.current;
-        if (!socket) return;
-
-        // Если мы уже подключены, но сменили чат - заходим в новую комнату сразу
-        if (socket.connected && conversationId) {
-            console.log('WS: Re-joining room', conversationId);
-            socket.emit('join_conversation', conversationId);
+        if (!socketRef.current) {
+            socketRef.current = io(WS_URL, {
+                transports: ["websocket"],
+                reconnection: true,
+            });
         }
 
-        // Слушаем коннект
+        const socket = socketRef.current;
+
         const onConnect = () => {
-            console.log('WS: Connected');
+            console.log('✅ WS: Connected');
+            if (userId) socket.emit('authenticate', userId);
             if (conversationId) socket.emit('join_conversation', conversationId);
         };
 
+        const onNewMessage = (payload: any) => {
+            console.log('✉️ WS: New message received', payload);
+            setLatestMessage(payload);
+        };
+
+        const onStatusChange = (data: any) => {
+            setLatestMessage({ event: 'userStatusChanged', ...data });
+        };
+
         socket.on('connect', onConnect);
-        // ... остальные обработчики
+        socket.on('newMessage', onNewMessage);
+        socket.on('userStatusChanged', onStatusChange);
+
+        // Если сокет уже подключен (при смене id чата)
+        if (socket.connected && conversationId) {
+            socket.emit('join_conversation', conversationId);
+        }
 
         return () => {
             socket.off('connect', onConnect);
-            // Не закрывай сокет совсем, просто сними слушатели
+            socket.off('newMessage', onNewMessage);
+            socket.off('userStatusChanged', onStatusChange);
         };
-    }, [conversationId]);
+    }, [conversationId, userId]); // Реагирует на смену чата
 
     return { latestMessage, socket: socketRef.current };
 };
+

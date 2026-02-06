@@ -158,9 +158,19 @@ class MessageController extends AbstractController
                     ]
                 ];
 
+                $payload = $message->getPayload() ?: [];
+                $payload['senderId'] = $this->getUser()->getId()->toString();
+
+                // ВАЖНО: Если это фото, filePath уже должен быть в $payload после сохранения файла
                 $redisData = [
                     'conversationId' => $conversation->getId()->toString(),
-                    'payload' => $messageData
+                    'payload' => [
+                        'id' => $message->getId()->toString(),
+                        'text' => $message->getText(),
+                        'direction' => 'inbound', // Для получателя это входящее
+                        'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
+                        'payload' => $payload // Здесь ДОЛЖЕН быть filePath
+                    ]
                 ];
 
                 // Публикуем. Важно: канал "chat_messages"
