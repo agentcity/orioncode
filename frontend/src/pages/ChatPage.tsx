@@ -47,7 +47,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
-    const audioRef = useRef(new Audio('https://assets.mixkit.co'));
+
 
     useEffect(() => {
         if (id) {
@@ -62,8 +62,14 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
             setIsContactOnline(latestMessage.status);
         }
         if (latestMessage.conversationId === id && !latestMessage.event) {
-            if (latestMessage.direction === 'inbound') audioRef.current.play().catch(() => {});
-            setMessages(prev => prev.some(m => m.id === latestMessage.id) ? prev : [...prev, latestMessage as Message]);
+
+            // ПАТЧ: Если в сокете нет senderId, но мы знаем что это наше сообщение (outbound)
+            const patchedMessage = {
+                ...latestMessage,
+                payload: latestMessage.payload || { senderId: latestMessage.direction === 'outbound' ? currentUser?.id : 'other' }
+            };
+
+            setMessages(prev => prev.some(m => m.id === patchedMessage.id) ? prev : [...prev, patchedMessage as Message]);
             setTimeout(scrollToBottom, 50);
         }
     }, [latestMessage, id, conversation]);
@@ -172,9 +178,9 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                     const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
                     const imageSrc = msg.preview || (msg.payload?.filePath ? `${serverBase}${msg.payload.filePath}` : null);
                     const isMine = conversation.type === 'internal'
-                        ? (String(msg.payload?.senderId) === String(currentUser?.id))
+                        ? (String(msg.payload?.senderId).toLowerCase() === String(currentUser?.id).toLowerCase())
                         : (msg.direction === 'outbound' || msg.direction === 'outgoing');
-                    
+
                     return (
                         <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', mb: 2 }}>
                             <Paper elevation={2} sx={{

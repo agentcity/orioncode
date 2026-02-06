@@ -48,17 +48,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         }
     };
 
-    const logout = async () => {
-        try {
-            await axiosClient.post('/logout', {}, {
-                headers: { 'Content-Type': 'application/json' }
-            });
-            // После этого очищаем стейт на фронте
-            setUser(null);
-            window.location.href = '/login';
-        } catch (error) {
-            console.error('Logout failed:', error);
-        }
+    const logout = () => {
+        localStorage.removeItem('token');
+        localStorage.removeItem('user'); // Также очистим данные юзера из хранилища
+        setUser(null); // Это автоматически сделает isAuthenticated = false
     };
 
     return (
