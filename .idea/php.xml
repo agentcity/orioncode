@@ -153,6 +153,8 @@
       <path value="$PROJECT_DIR$/backend/vendor/staabm/side-effects-detector" />
       <path value="$PROJECT_DIR$/backend/vendor/symfony/stimulus-bundle" />
       <path value="$PROJECT_DIR$/backend/vendor/symfony/ux-turbo" />
+      <path value="$PROJECT_DIR$/backend/vendor/symfony/uid" />
+      <path value="$PROJECT_DIR$/backend/vendor/symfony/polyfill-uuid" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2" />

@@ -2,14 +2,15 @@
 
 namespace App\Entity;
 
+use Ramsey\Uuid\Uuid;
+use App\Repository\ConversationRepository;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Ramsey\Uuid\Uuid;
-use Ramsey\Uuid\UuidInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 use DateTimeImmutable;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: ConversationRepository::class)]
 #[ORM\Table(
     name: 'conversations',
     indexes: [
@@ -32,180 +33,133 @@ class Conversation
 {
     #[ORM\Id]
     #[ORM\Column(type: 'uuid', unique: true)]
-    private UuidInterface $id;
+    #[Groups(['chat', 'conversation:list'])]
+    private $id = null;
 
-    #[ORM\ManyToOne(targetEntity: Account::class, inversedBy: 'conversations')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Account $account;
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: false)]
+    private ?Account $account = null;
 
-    #[ORM\ManyToOne(targetEntity: Contact::class, inversedBy: 'conversations')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private Contact $contact;
+    #[ORM\Column(length: 255, nullable: true)]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?string $externalId = null;
 
-    #[ORM\Column(type: 'string', length: 255)]
-    private string $externalId;
+    #[ORM\Column(length: 50)]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?string $type = null;
 
-    #[ORM\Column(type: 'string', length: 50)]
-    private string $type;
+    #[ORM\Column(length: 50)]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?string $status = 'active';
 
-    #[ORM\Column(type: 'string', length: 20)]
-    private string $status;
+    #[ORM\Column(type: 'datetime_immutable')]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?\DateTimeImmutable $lastMessageAt = null;
 
-    #[ORM\Column(type: 'datetime_immutable', nullable: true)]
-    private ?DateTimeImmutable $lastMessageAt = null;
+    #[ORM\ManyToOne(inversedBy: 'conversations')]
+    #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?Contact $contact = null;
 
-    #[ORM\Column(type: 'integer')]
-    private int $unreadCount = 0;
-
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'conversations')]
-    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    #[ORM\ManyToOne]
+    #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['chat', 'conversation:list'])]
     private ?User $assignedTo = null;
 
-    #[ORM\Column(type: 'json', nullable: true)]
-    private ?array $metadata = null;
-
-    #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $createdAt;
-
-    #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $updatedAt;
-
-    #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, cascade: ['persist', 'remove'])]
-    private Collection $messages;
-
-    #[ORM\ManyToOne(targetEntity: User::class)]
+    // ДОБАВЛЕНО: связь со вторым пользователем системы для внутреннего мессенджера
+    #[ORM\ManyToOne]
     #[ORM\JoinColumn(nullable: true)]
+    #[Groups(['chat', 'conversation:list'])]
     private ?User $targetUser = null;
+
+    #[ORM\Column(type: 'integer')]
+    #[Groups(['chat', 'conversation:list'])]
+    private int $unreadCount = 0;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private ?\DateTimeImmutable $createdAt = null;
+
+    #[ORM\Column(type: 'datetime_immutable')]
+    private ?\DateTimeImmutable $updatedAt = null;
+
+    #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, orphanRemoval: true)]
+    private Collection $messages;
 
     public function __construct()
     {
         $this->id = Uuid::uuid4();
+        $this->messages = new ArrayCollection();
+        $this->lastMessageAt = new DateTimeImmutable();
         $this->createdAt = new DateTimeImmutable();
         $this->updatedAt = new DateTimeImmutable();
-        $this->messages = new ArrayCollection();
+
     }
 
-    public function getId(): UuidInterface
+    #[ORM\PrePersist]
+    public function setInitialTimestamps(): void
+    {
+        $this->createdAt = new DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function updatedTimestamps(): void
+    {
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function getId()
     {
         return $this->id;
     }
-
-    public function getAccount(): Account
+    public function setId($id): self
     {
-        return $this->account;
-    }
-
-    public function setAccount(Account $account): self
-    {
-        $this->account = $account;
+        $this->id = $id;
         return $this;
     }
+    public function getAccount(): ?Account { return $this->account; }
+    public function setAccount(?Account $account): self { $this->account = $account; return $this; }
 
-    public function getContact(): Contact
+    public function getExternalId(): ?string { return $this->externalId; }
+    public function setExternalId(?string $externalId): self { $this->externalId = $externalId; return $this; }
+
+    public function getType(): ?string { return $this->type; }
+    public function setType(string $type): self { $this->type = $type; return $this; }
+
+    public function getStatus(): ?string { return $this->status; }
+    public function setStatus(string $status): self { $this->status = $status; return $this; }
+
+    public function getLastMessageAt(): ?\DateTimeImmutable { return $this->lastMessageAt; }
+    public function setLastMessageAt(\DateTimeImmutable $lastMessageAt): self { $this->lastMessageAt = $lastMessageAt; return $this; }
+
+    public function getContact(): ?Contact { return $this->contact; }
+    public function setContact(?Contact $contact): self { $this->contact = $contact; return $this; }
+
+    public function getAssignedTo(): ?User { return $this->assignedTo; }
+    public function setAssignedTo(?User $assignedTo): self { $this->assignedTo = $assignedTo; return $this; }
+
+    // ГЕТТЕР И СЕТТЕР ДЛЯ НОВОГО ПОЛЯ
+    public function getTargetUser(): ?User { return $this->targetUser; }
+    public function setTargetUser(?User $targetUser): self { $this->targetUser = $targetUser; return $this; }
+
+    public function getUnreadCount(): int { return $this->unreadCount; }
+    public function setUnreadCount(int $unreadCount): self { $this->unreadCount = $unreadCount; return $this; }
+
+    public function getCreatedAt(): ?\DateTimeImmutable { return $this->createdAt; }
+    public function getUpdatedAt(): ?\DateTimeImmutable { return $this->updatedAt; }
+
+    // ДОБАВЛЕНО: Метод для красивого имени чата в нашей экосистеме
+    #[Groups(['conversation:list', 'chat'])]
+    public function getDisplayName(): string
     {
-        return $this->contact;
+        if ($this->type === 'internal' && $this->targetUser) {
+            return $this->targetUser->getFirstName() . ' ' . $this->targetUser->getLastName();
+        }
+        return $this->contact ? $this->contact->getMainName() : 'Системный чат';
     }
 
-    public function setContact(Contact $contact): self
-    {
-        $this->contact = $contact;
-        return $this;
-    }
-
-    public function getExternalId(): string
-    {
-        return $this->externalId;
-    }
-
-    public function setExternalId(string $externalId): self
-    {
-        $this->externalId = $externalId;
-        return $this;
-    }
-
-    public function getType(): string
-    {
-        return $this->type;
-    }
-
-    public function setType(string $type): self
-    {
-        $this->type = $type;
-        return $this;
-    }
-
-    public function getStatus(): string
-    {
-        return $this->status;
-    }
-
-    public function setStatus(string $status): self
-    {
-        $this->status = $status;
-        return $this;
-    }
-
-    public function getLastMessageAt(): ?DateTimeImmutable
-    {
-        return $this->lastMessageAt;
-    }
-
-    public function setLastMessageAt(?DateTimeImmutable $lastMessageAt): self
-    {
-        $this->lastMessageAt = $lastMessageAt;
-        return $this;
-    }
-
-    public function getUnreadCount(): int
-    {
-        return $this->unreadCount;
-    }
-
-    public function setUnreadCount(int $unreadCount): self
-    {
-        $this->unreadCount = $unreadCount;
-        return $this;
-    }
-
-    public function getAssignedTo(): ?User
-    {
-        return $this->assignedTo;
-    }
-
-    public function setAssignedTo(?User $assignedTo): self
-    {
-        $this->assignedTo = $assignedTo;
-        return $this;
-    }
-
-    public function getMetadata(): ?array
-    {
-        return $this->metadata;
-    }
-
-    public function setMetadata(?array $metadata): self
-    {
-        $this->metadata = $metadata;
-        return $this;
-    }
-
-    public function getCreatedAt(): DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): DateTimeImmutable
-    {
-        return $this->updatedAt;
-    }
-
-    /**
-     * @return Collection<int, Message>
-     */
-    public function getMessages(): Collection
-    {
-        return $this->messages;
-    }
+    /** @return Collection<int, Message> */
+    public function getMessages(): Collection { return $this->messages; }
 
     public function addMessage(Message $message): self
     {
@@ -225,19 +179,4 @@ class Conversation
         }
         return $this;
     }
-
-    #[ORM\PreUpdate]
-    public function updatedTimestamps(): void
-    {
-        $this->updatedAt = new DateTimeImmutable('now');
-    }
-
-    public function getDisplayName(): string
-    {
-        if ($this->type === 'internal' && $this->targetUser) {
-            return $this->targetUser->getFirstName() . ' ' . $this->targetUser->getLastName();
-        }
-        return $this->contact ? $this->contact->getMainName() : 'Системный чат';
-    }
-
 }

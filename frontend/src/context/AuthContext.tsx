@@ -21,7 +21,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         const checkAuth = async () => {
             try {
                 // Здесь можно сделать запрос к /api/user/me или проверить наличие JWT
-                const response = await axiosClient.get('/user/me'); // Пример эндпоинта
+                const response = await axiosClient.get('/users/me'); // Пример эндпоинта
                 setUser(response.data);
             } catch (error) {
                 setUser(null);
@@ -35,10 +35,10 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (email: string, password: string) => {
         setLoading(true);
         try {
-            const response = await axiosClient.post('/login', { email, password });
+            await axiosClient.post('/login', { email, password });
             // Если используете JWT, сохраните токен: localStorage.setItem('jwt_token', response.data.token);
             // Затем получите данные пользователя
-            const userResponse = await axiosClient.get('/user/me');
+            const userResponse = await axiosClient.get('/users/me');
             setUser(userResponse.data);
         } catch (error) {
             console.error('Login failed:', error);

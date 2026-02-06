@@ -27,7 +27,7 @@ export interface Conversation {
     id: string;
     accountId: string;
     contact: Contact;
-    type: 'telegram' | 'whatsapp' | 'max';
+    type: 'telegram' | 'whatsapp' | 'internal' | 'max';
     status: 'open' | 'closed' | 'pending';
     lastMessageAt: string;
     unreadCount: number;

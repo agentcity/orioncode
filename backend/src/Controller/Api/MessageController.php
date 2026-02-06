@@ -24,8 +24,10 @@ class MessageController extends AbstractController
     #[Route('', name: 'api_messages_list', methods: ['GET'])]
     public function index(Conversation $conversation, MessageRepository $repository): JsonResponse
     {
-        // Проверка: принадлежит ли чат текущему пользователю
-        if ($conversation->getAssignedTo() !== $this->getUser()) {
+        $user = $this->getUser();
+
+        // РАЗРЕШАЕМ ДОСТУП ДЛЯ ОБОИХ УЧАСТНИКОВ
+        if ($conversation->getAssignedTo() !== $user && $conversation->getTargetUser() !== $user) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
 
@@ -34,23 +36,40 @@ class MessageController extends AbstractController
             ['sentAt' => 'ASC']
         );
 
-        $data = array_map(fn($m) => [
-            'id' => $m->getId()->toString(),
-            'text' => $m->getText(),
-            'direction' => $m->getDirection(),
-            'payload' => $m->getPayload(),
-            'status' => $m->getStatus(),
-            'senderType' => $m->getSenderType(),
-            'sentAt' => $m->getSentAt()->format(\DateTime::ATOM),
-            'isRead' => $m->isRead(),
-            'attachments' => array_map(fn($a) => [
-                'id' => $a->getId()->toString(),
-                'type' => $a->getType(),
-                'url' => $a->getUrl(),
-                'fileName' => $a->getFileName(),
-                'mimeType' => $a->getMimeType()
-            ], $m->getAttachments()->toArray())
-        ], $messages);
+
+        $data = array_map(function($m) use ($conversation) {
+            $payload = $m->getPayload() ?? [];
+
+            // Если это внутренний чат и в базе нет senderId,
+            // пробуем определить его по направлению (только для истории)
+            if ($conversation->getType() === 'internal' && !isset($payload['senderId'])) {
+                if ($m->getDirection() === 'outbound') {
+                    $payload['senderId'] = $conversation->getAssignedTo()->getId()->toString();
+                } else {
+                    $payload['senderId'] = $conversation->getTargetUser()->getId()->toString();
+                }
+            }
+
+            return [
+                'id' => $m->getId()->toString(),
+                'text' => $m->getText(),
+                'direction' => $m->getDirection(),
+                'status' => $m->getStatus(),
+                'senderType' => $m->getSenderType(),
+                'isRead' => $m->isRead(),
+                'sentAt' => $m->getSentAt()->format(\DateTime::ATOM),
+                'payload' => $payload, // Теперь тут точно есть senderId
+                'attachments' => array_map(function($a) {
+                    return [
+                        'id' => $a->getId()->toString(),
+                        'type' => $a->getType(),
+                        'url' => $a->getUrl(),
+                        'fileName' => $a->getFileName(),
+                        'mimeType' => $a->getMimeType()
+                    ];
+                }, $m->getAttachments()->toArray())
+            ];
+        }, $messages);
 
         return $this->json($data);
     }
@@ -117,6 +136,10 @@ class MessageController extends AbstractController
 
             $conversation->setUnreadCount(0);
             $conversation->setLastMessageAt($message->getSentAt());
+
+            $payload = $message->getPayload() ?? [];
+            $payload['senderId'] = $this->getUser()->getId()->toString(); // Твой ID
+            $message->setPayload($payload);
 
             $em->flush(); // КРИТИЧНО: без этого ничего не запишется
 

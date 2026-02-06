@@ -144,6 +144,8 @@
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/staabm/side-effects-detector" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/stimulus-bundle" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/ux-turbo" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/uid" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/polyfill-uuid" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

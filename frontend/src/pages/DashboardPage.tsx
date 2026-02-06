@@ -1,136 +1,182 @@
 import React, { useEffect, useState } from 'react';
-import { useAuth } from '../context/AuthContext';
-import { useNavigate, Routes, Route, useParams, useLocation } from 'react-router-dom';
-import { Box, Typography, AppBar, Toolbar, Button, List, ListItemButton, ListItemText, Avatar, Badge, useMediaQuery, useTheme } from '@mui/material';
+import {
+    Box,
+    List,
+    ListItemButton,
+    ListItemText,
+    Avatar,
+    Typography,
+    AppBar,
+    Toolbar,
+    useMediaQuery,
+    useTheme,
+    Badge,
+    IconButton,
+} from '@mui/material';
+import { Routes, Route, useNavigate, useLocation } from 'react-router-dom';
 import WhatsAppIcon from '@mui/icons-material/WhatsApp';
 import TelegramIcon from '@mui/icons-material/Telegram';
+import AddCommentIcon from '@mui/icons-material/AddComment'; // Иконка для нового чата
 import HubIcon from '@mui/icons-material/Hub';
+import ChatPage from './ChatPage';
 import axiosClient from '../api/axiosClient';
 import { Conversation } from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
-import ChatPage from './ChatPage';
-
+import { UserSelector } from '../components/UserSelector'; // Импорт нового компонента
+import LogoutIcon from '@mui/icons-material/Logout';
+import { useAuth } from '../context/AuthContext';
 const DashboardPage: React.FC = () => {
-    const { user, isAuthenticated, logout, loading } = useAuth();
+    const theme = useTheme();
+    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
     const navigate = useNavigate();
     const location = useLocation();
-    const theme = useTheme();
 
-    const isMobile = useMediaQuery(theme.breakpoints.down('md'));
-
-    // Исправленное извлечение ID (берем последний сегмент)
-    const pathSegments = location.pathname.split('/');
-    const activeChatId = pathSegments.includes('chat') ? pathSegments[pathSegments.indexOf('chat') + 1] : null;
-    const isChatOpen = !!activeChatId;
+    const activeChatId = location.pathname.split('/').pop();
+    const isChatOpen = location.pathname.includes('/chat/');
 
     const [conversations, setConversations] = useState<Conversation[]>([]);
-    const { latestMessage, socket } = useWebSocket(undefined, user?.id);
+    const [isUserSelectorOpen, setIsUserSelectorOpen] = useState(false);
+    const { latestMessage } = useWebSocket();
+    const { logout } = useAuth();
 
     useEffect(() => {
-        if (socket && user?.id && isAuthenticated) {
-            socket.emit("authenticate", user.id);
-        }
-    }, [socket, user, isAuthenticated]);
+        fetchConversations();
+    }, []);
 
     useEffect(() => {
-        if (!isAuthenticated && !loading) navigate('/login');
-        else if (isAuthenticated) fetchConversations();
-    }, [isAuthenticated, loading]);
-
-    useEffect(() => {
-        if (latestMessage && latestMessage.conversationId) {
-            setConversations(prev => {
-                const index = prev.findIndex(c => c.id === latestMessage.conversationId);
-                const updatedList = [...prev];
-                if (index !== -1) {
-                    const targetChat = { ...updatedList[index] };
-                    targetChat.lastMessageAt = latestMessage.sentAt;
-                    if (latestMessage.direction === 'incoming' && activeChatId !== latestMessage.conversationId) {
-                        targetChat.unreadCount = (targetChat.unreadCount || 0) + 1;
-                    }
-                    updatedList.splice(index, 1);
-                    return [targetChat, ...updatedList];
+        if (latestMessage?.conversationId) {
+            setConversations((prev) => {
+                const list = [...prev];
+                const idx = list.findIndex((c) => c.id === latestMessage.conversationId);
+                if (idx !== -1) {
+                    const item = { ...list[idx], lastMessageAt: latestMessage.sentAt };
+                    list.splice(idx, 1);
+                    return [item, ...list];
                 }
-                return updatedList;
+                return list;
             });
         }
-    }, [latestMessage, activeChatId]);
-
-    useEffect(() => {
-        if (activeChatId && isChatOpen) {
-            setConversations(prev => prev.map(c => c.id === activeChatId ? { ...c, unreadCount: 0 } : c));
-        }
-    }, [activeChatId, isChatOpen]);
+    }, [latestMessage]);
 
     const fetchConversations = async () => {
         try {
             const res = await axiosClient.get<Conversation[]>('/conversations');
-            setConversations(res.data.sort((a, b) => new Date(b.lastMessageAt).getTime() - new Date(a.lastMessageAt).getTime()));
-        } catch (err) { console.error(err); }
+            setConversations(res.data);
+        } catch (err) {
+            console.error('Failed to fetch conversations', err);
+        }
     };
 
-    if (loading) return <Typography sx={{p: 2}}>Загрузка...</Typography>;
+    // Метод создания внутреннего чата
+    const handleStartInternalChat = async (userId: string) => {
+        try {
+            const res = await axiosClient.post('/conversations/internal', { userId });
+            setIsUserSelectorOpen(false);
+            await fetchConversations();
+            navigate(`/dashboard/chat/${res.data.id}`);
+        } catch (err) {
+            console.error('Failed to start internal chat', err);
+        }
+    };
+
+    const getChannelIcon = (type: string | undefined) => {
+        const t = type?.toLowerCase();
+        if (t === 'whatsapp') return <WhatsAppIcon sx={{ fontSize: 14, color: '#25D366' }} />;
+        if (t === 'telegram') return <TelegramIcon sx={{ fontSize: 14, color: '#24A1DE' }} />;
+        if (t === 'internal') return <HubIcon sx={{ fontSize: 14, color: '#666' }} />;
+        return null;
+    };
 
     return (
-        <Box sx={{ display: 'flex', flexDirection: 'column', height: '100vh', overflow: 'hidden' }}>
+        <Box sx={{ display: 'flex', height: '100vh', overflow: 'hidden', bgcolor: 'background.default' }}>
             {(!isMobile || !isChatOpen) && (
-                <AppBar position="static" elevation={0} sx={{ borderBottom: 1, borderColor: 'divider' }}>
-                    <Toolbar>
-                        <Typography variant="h6" sx={{ flexGrow: 1, fontWeight: 'bold' }}>ORION</Typography>
-                        <Button color="inherit" onClick={logout}>Выход</Button>
-                    </Toolbar>
-                </AppBar>
-            )}
-
-            <Box sx={{ display: 'flex', flexGrow: 1, overflow: 'hidden' }}>
-                {(!isMobile || !isChatOpen) && (
-                    <Box sx={{
+                <Box
+                    sx={{
                         width: isMobile ? '100%' : 350,
                         flexShrink: 0,
-                        borderRight: isMobile ? 0 : 1,
+                        borderRight: 1,
                         borderColor: 'divider',
-                        overflowY: 'auto',
-                        bgcolor: 'white'
-                    }}>
-                        <List sx={{ p: 0 }}>
-                            {conversations.map((conv) => (
-                                <ListItemButton
-                                    key={conv.id}
-                                    selected={activeChatId === conv.id}
-                                    // ИСПРАВЛЕНО: Абсолютный путь
-                                    onClick={() => navigate(`/dashboard/chat/${conv.id}`)}
-                                    sx={{ borderBottom: '1px solid #f5f5f5', py: 1.5 }}
-                                >
-                                    <Badge
-                                        overlap="circular"
-                                        anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                        badgeContent={<Box sx={{ bgcolor: 'white', borderRadius: '50%', display: 'flex', boxShadow: 1, p: '1px' }}>
-                                            {conv.type === 'telegram' ? <TelegramIcon sx={{ fontSize: 16, color: '#24A1DE' }} /> : <WhatsAppIcon sx={{ fontSize: 16, color: '#25D366' }} />}
-                                        </Box>}
-                                    >
-                                        <Badge color="error" badgeContent={conv.unreadCount} invisible={conv.unreadCount === 0}>
-                                            <Avatar sx={{ bgcolor: '#eee', color: '#555' }}>{conv.contact.mainName[0]}</Avatar>
-                                        </Badge>
-                                    </Badge>
-                                    <ListItemText sx={{ ml: 2 }} primary={conv.contact.mainName} secondary={conv.type.toUpperCase()} />
-                                    <Typography variant="caption" color="text.secondary">
-                                        {new Date(conv.lastMessageAt).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'})}
-                                    </Typography>
-                                </ListItemButton>
-                            ))}
-                        </List>
-                    </Box>
-                )}
+                        display: 'flex',
+                        flexDirection: 'column',
+                        bgcolor: 'white',
+                    }}
+                >
+                    <AppBar position="static" elevation={0} sx={{ bgcolor: 'white', borderBottom: 1, borderColor: 'divider' }}>
+                        <Toolbar sx={{ justifyContent: 'space-between' }}>
+                            <Typography variant="h6" color="primary" sx={{ fontWeight: 'bold' }}>
+                                ORION
+                            </Typography>
+                            <Box>
+                                <IconButton color="primary" onClick={() => setIsUserSelectorOpen(true)}>
+                                    <AddCommentIcon />
+                                </IconButton>
+                                <IconButton color="error" onClick={logout} title="Выйти" sx={{ ml: 0.5 }}>
+                                    <LogoutIcon fontSize="small" />
+                                </IconButton>
+                            </Box>
+                        </Toolbar>
+                    </AppBar>
 
-                {(!isMobile || isChatOpen) && (
-                    <Box sx={{ flexGrow: 1, minWidth: 0, height: '100%', bgcolor: '#f0f2f5' }}>
-                        <Routes>
-                            <Route path="chat/:id" element={<ChatPage isMobile={isMobile} />} />
-                            <Route path="*" element={!isMobile && <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%' }}><Typography color="text.secondary">Выберите чат</Typography></Box>} />
-                        </Routes>
-                    </Box>
-                )}
-            </Box>
+                    <List sx={{ flexGrow: 1, overflowY: 'auto', p: 0 }}>
+                        {conversations.map((conv) => (
+                            <ListItemButton
+                                key={conv.id}
+                                selected={activeChatId === conv.id}
+                                onClick={() => navigate(`/dashboard/chat/${conv.id}`)}
+                                sx={{
+                                    borderBottom: '1px solid #f0f0f0',
+                                    '&.Mui-selected': { bgcolor: '#e3f2fd' },
+                                }}
+                            >
+                                <Badge
+                                    overlap="circular"
+                                    anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
+                                    badgeContent={getChannelIcon(conv.type)}
+                                >
+                                    <Avatar sx={{ bgcolor: conv.type === 'internal' ? '#9c27b0' : 'primary.main' }}>
+                                        {conv.contact?.mainName?.[0] || 'U'}
+                                    </Avatar>
+                                </Badge>
+                                <ListItemText
+                                    sx={{ ml: 2 }}
+                                    primary={
+                                        <Typography variant="subtitle2" sx={{ fontWeight: activeChatId === conv.id ? 'bold' : 'medium' }}>
+                                            {conv.contact?.mainName || 'Неизвестно'}
+                                        </Typography>
+                                    }
+                                    secondary={conv.type?.toUpperCase() || 'CHAT'}
+                                />
+                                {conv.unreadCount > 0 && (
+                                    <Badge badgeContent={conv.unreadCount} color="error" sx={{ mr: 2 }} />
+                                )}
+                            </ListItemButton>
+                        ))}
+                    </List>
+                </Box>
+            )}
+
+            {(!isMobile || isChatOpen) && (
+                <Box sx={{ flexGrow: 1, height: '100%', minWidth: 0 }}>
+                    <Routes>
+                        <Route path="chat/:id" element={<ChatPage isMobile={isMobile} />} />
+                        <Route
+                            path="/"
+                            element={
+                                <Box sx={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: 'text.secondary' }}>
+                                    <Typography>Выберите чат для начала общения</Typography>
+                                </Box>
+                            }
+                        />
+                    </Routes>
+                </Box>
+            )}
+
+            {/* Модальное окно выбора пользователя */}
+            <UserSelector
+                open={isUserSelectorOpen}
+                onClose={() => setIsUserSelectorOpen(false)}
+                onSelect={handleStartInternalChat}
+            />
         </Box>
     );
 };

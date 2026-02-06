@@ -2,71 +2,86 @@
 
 namespace App\Entity;
 
-use Doctrine\Common\Collections\ArrayCollection;
-use Doctrine\Common\Collections\Collection;
+use App\Repository\UserRepository;
 use Doctrine\ORM\Mapping as ORM;
-use Ramsey\Uuid\Uuid;
-use Ramsey\Uuid\UuidInterface;
 use Symfony\Component\Security\Core\User\PasswordAuthenticatedUserInterface;
 use Symfony\Component\Security\Core\User\UserInterface;
+use Symfony\Component\Serializer\Annotation\Groups;
 use DateTimeImmutable;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: UserRepository::class)]
 #[ORM\Table(name: 'users')]
-#[ORM\Index(columns: ['email'], name: 'idx_user_email')] // Вынесите индекс отдельно
+#[ORM\Index(columns: ['email'], name: 'idx_user_email')]
 #[ORM\Index(columns: ['is_active'], name: 'idx_user_is_active')]
 #[ORM\HasLifecycleCallbacks]
 class User implements UserInterface, PasswordAuthenticatedUserInterface
 {
+    public const ROLE_ADMIN = 'ROLE_ADMIN';
+    public const ROLE_USER = 'ROLE_USER';
+
     #[ORM\Id]
+    #[ORM\GeneratedValue(strategy: 'CUSTOM')]
+    #[ORM\CustomIdGenerator(class: 'doctrine.uuid_generator')]
     #[ORM\Column(type: 'uuid', unique: true)]
-    private UuidInterface $id;
+    #[Groups(['chat', 'conversation:list'])]
+    private $id = null;
 
-    #[ORM\Column(type: 'string', length: 180, unique: true)]
-    private string $email;
+    #[ORM\Column(length: 180, unique: true)]
+    #[Groups(['chat', 'conversation:list'])]
+    private ?string $email = null;
 
-    #[ORM\Column(type: 'json')]
+    #[ORM\Column]
     private array $roles = [];
 
-    #[ORM\Column(type: 'string')]
-    private string $password;
+    /**
+     * @var string The hashed password
+     */
+    #[ORM\Column]
+    private ?string $password = null;
 
-    #[ORM\Column(type: 'string', nullable: true)]
+    #[ORM\Column(length: 100)]
+    #[Groups(['chat', 'conversation:list'])]
     private ?string $firstName = null;
 
-    #[ORM\Column(type: 'string', nullable: true)]
+    #[ORM\Column(length: 100)]
+    #[Groups(['chat', 'conversation:list'])]
     private ?string $lastName = null;
 
-    #[ORM\Column(type: 'boolean')]
+    #[ORM\Column]
     private bool $isActive = true;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $createdAt;
+    private ?DateTimeImmutable $createdAt = null;
 
     #[ORM\Column(type: 'datetime_immutable')]
-    private DateTimeImmutable $updatedAt;
-
-    #[ORM\OneToMany(mappedBy: 'user', targetEntity: Account::class, cascade: ['remove'])]
-    private Collection $accounts;
-
-    #[ORM\OneToMany(mappedBy: 'assignedTo', targetEntity: Conversation::class)]
-    private Collection $conversations;
+    private ?DateTimeImmutable $updatedAt = null;
 
     public function __construct()
     {
-        $this->id = Uuid::uuid4();
+        $this->id = Uuid::v4();
         $this->createdAt = new DateTimeImmutable();
         $this->updatedAt = new DateTimeImmutable();
-        $this->accounts = new ArrayCollection();
-        $this->conversations = new ArrayCollection();
     }
 
-    public function getId(): UuidInterface
+    #[ORM\PrePersist]
+    public function setInitialTimestamps(): void
+    {
+        $this->createdAt = new DateTimeImmutable();
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    #[ORM\PreUpdate]
+    public function updatedTimestamps(): void
+    {
+        $this->updatedAt = new DateTimeImmutable();
+    }
+
+    public function getId()
     {
         return $this->id;
     }
 
-    public function getEmail(): string
+    public function getEmail(): ?string
     {
         return $this->email;
     }
@@ -74,55 +89,28 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setEmail(string $email): self
     {
         $this->email = $email;
+
         return $this;
     }
 
     public function getUserIdentifier(): string
     {
-        return $this->email;
+        return (string) $this->email;
     }
 
-    public function getFirstName(): ?string
+    public function getRoles(): array
     {
-        return $this->firstName;
+        $roles = $this->roles;
+        $roles[] = 'ROLE_USER';
+
+        return array_unique($roles);
     }
 
-    public function setFirstName(?string $firstName): self
+    public function setRoles(array $roles): self
     {
-        $this->firstName = $firstName;
+        $this->roles = $roles;
+
         return $this;
-    }
-
-    public function getLastName(): ?string
-    {
-        return $this->lastName;
-    }
-
-    public function setLastName(?string $lastName): self
-    {
-        $this->lastName = $lastName;
-        return $this;
-    }
-
-    public function isIsActive(): bool
-    {
-        return $this->isActive;
-    }
-
-    public function setIsActive(bool $isActive): self
-    {
-        $this->isActive = $isActive;
-        return $this;
-    }
-
-    public function getCreatedAt(): DateTimeImmutable
-    {
-        return $this->createdAt;
-    }
-
-    public function getUpdatedAt(): DateTimeImmutable
-    {
-        return $this->updatedAt;
     }
 
     public function getPassword(): string
@@ -133,21 +121,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     public function setPassword(string $password): self
     {
         $this->password = $password;
-        return $this;
-    }
 
-    public function getRoles(): array
-    {
-        $roles = $this->roles;
-        if (empty($roles)) {
-            $roles[] = 'ROLE_USER';
-        }
-        return array_unique($roles);
-    }
-
-    public function setRoles(array $roles): self
-    {
-        $this->roles = $roles;
         return $this;
     }
 
@@ -155,25 +129,64 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     {
     }
 
-    /**
-     * @return Collection<int, Account>
-     */
-    public function getAccounts(): Collection
+    public function getFirstName(): ?string
     {
-        return $this->accounts;
+        return $this->firstName;
     }
 
-    /**
-     * @return Collection<int, Conversation>
-     */
-    public function getConversations(): Collection
+    public function setFirstName(string $firstName): self
     {
-        return $this->conversations;
+        $this->firstName = $firstName;
+
+        return $this;
     }
 
-    #[ORM\PreUpdate]
-    public function updatedTimestamps(): void
+    public function getLastName(): ?string
     {
-        $this->updatedAt = new DateTimeImmutable('now');
+        return $this->lastName;
+    }
+
+    public function setLastName(string $lastName): self
+    {
+        $this->lastName = $lastName;
+
+        return $this;
+    }
+
+    public function isActive(): bool
+    {
+        return $this->isActive;
+    }
+
+    public function setIsActive(bool $isActive): self
+    {
+        $this->isActive = $isActive;
+
+        return $this;
+    }
+
+    public function getCreatedAt(): ?DateTimeImmutable
+    {
+        return $this->createdAt;
+    }
+
+    public function setCreatedAt(DateTimeImmutable $createdAt): self
+    {
+        $this->createdAt = $createdAt;
+
+        return $this;
+    }
+
+    public function getUpdatedAt(): ?DateTimeImmutable
+    {
+        return $this->updatedAt;
+    }
+
+    public function setUpdatedAt(DateTimeImmutable $updatedAt): self
+    {
+        $this->updatedAt = $updatedAt;
+
+        return $this;
     }
 }
+

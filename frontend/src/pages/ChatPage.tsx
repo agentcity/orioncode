@@ -15,6 +15,7 @@ import HubIcon from '@mui/icons-material/Hub';
 import axiosClient from '../api/axiosClient';
 import { Conversation, Message } from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
+import { useAuth } from '../context/AuthContext';
 
 const StyledBadge = styled(Badge, {
     shouldForwardProp: (prop) => prop !== 'isOnline',
@@ -35,6 +36,7 @@ const StyledBadge = styled(Badge, {
 const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
+    const { user: currentUser } = useAuth();
     const { latestMessage } = useWebSocket(id);
     const [conversation, setConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
@@ -156,7 +158,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                         {getChannelIcon(conversation.type)}
                     </Box>
                     <Typography variant="caption" color={isContactOnline ? "#44b700" : "text.secondary"}>
-                        {isContactOnline ? 'в сети' : 'был(а) недавно'} • {conversation.type.toUpperCase()}
+                        {isContactOnline ? 'в сети' : 'был(а) недавно'} • {conversation.type ? conversation.type.toUpperCase() : 'CHAT'}
                     </Typography>
                 </Box>
             </Box>
@@ -169,14 +171,17 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 {messages.map((msg: any) => {
                     const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
                     const imageSrc = msg.preview || (msg.payload?.filePath ? `${serverBase}${msg.payload.filePath}` : null);
-
+                    const isMine = conversation.type === 'internal'
+                        ? (String(msg.payload?.senderId) === String(currentUser?.id))
+                        : (msg.direction === 'outbound' || msg.direction === 'outgoing');
+                    
                     return (
-                        <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: msg.direction === 'inbound' ? 'flex-start' : 'flex-end', mb: 2 }}>
+                        <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', mb: 2 }}>
                             <Paper elevation={2} sx={{
                                 p: imageSrc ? 1 : 1.5,
-                                bgcolor: msg.direction === 'inbound' ? '#ffffff' : '#d1e4ff',
+                                bgcolor: isMine ? '#d1e4ff' : '#ffffff',
                                 maxWidth: '85%', overflow: 'hidden',
-                                borderRadius: msg.direction === 'inbound' ? '18px 18px 18px 4px' : '18px 18px 4px 18px',
+                                borderRadius: isMine ?  '18px 18px 4px 18px' : '18px 18px 18px 4px',
                                 wordBreak: 'break-word'
                             }}>
                                 {imageSrc && (
@@ -254,3 +259,5 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 };
 
 export default ChatPage;
+
+
