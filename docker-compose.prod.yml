@@ -1,5 +1,7 @@
 version: '3.8'
 
+name: orion_prod
+
 services:
   # 1. База данных (Доступна только внутри сети)
   orion_db:
