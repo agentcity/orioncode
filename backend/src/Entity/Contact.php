@@ -44,6 +44,9 @@ class Contact
     #[ORM\OneToMany(mappedBy: 'contact', targetEntity: Conversation::class, cascade: ['remove'])]
     private Collection $conversations;
 
+    #[ORM\Column(type: 'boolean', options: ['default' => false])]
+    private bool $isOnline = false; // Добавь "= false" здесь
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
