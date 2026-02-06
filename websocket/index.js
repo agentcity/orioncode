@@ -12,6 +12,14 @@ io.on("connection", (socket) => {
         socket.join(`conversation:${id}`);
         console.log(`👤 Socket ${socket.id} joined conversation:${id}`);
     });
+    socket.on("typing", (data) => {
+        // Шлем всем в комнату, КРОМЕ отправителя (через broadcast или to)
+        socket.to(`conversation:${data.conversationId}`).emit("newMessage", {
+            event: "typing",
+            conversationId: data.conversationId,
+            userId: data.userId
+        });
+    });
 });
 
 // Слушаем ОБА канала на всякий случай

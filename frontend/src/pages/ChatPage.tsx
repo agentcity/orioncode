@@ -37,11 +37,14 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
     const { user: currentUser } = useAuth();
-    const { latestMessage } = useWebSocket(id);
+    const { latestMessage, socket } = useWebSocket(id, currentUser?.id);
     const [conversation, setConversation] = useState<Conversation | null>(null);
     const [messages, setMessages] = useState<Message[]>([]);
     const [newMessageText, setNewMessageText] = useState('');
     const [isContactOnline, setIsContactOnline] = useState(false);
+
+    const [isTyping, setIsTyping] = useState(false);
+    const typingTimeoutRef = useRef<NodeJS.Timeout | null>(null);
 
     // Состояние для полноэкранного просмотра фото
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
@@ -60,30 +63,53 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     useEffect(() => {
         if (!latestMessage || latestMessage.event) return;
 
-        setMessages(prev => {
-            // 1. Проверяем по ID (уже есть в базе)
-            if (prev.some(m => m.id === latestMessage.id)) return prev;
+        // 1. Статус "В сети"
+        if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
+            setIsContactOnline(latestMessage.status);
+            return;
+        }
 
-            // 2. Проверяем "оптимистичные" сообщения (те, что мы отправили сами)
-            // Если в списке есть сообщение с таким же текстом, отправленное менее 2 секунд назад
-            // и оно помечено как 'outbound', заменяем его или игнорируем дубль
-            const isDuplicate = prev.some(m =>
-                m.text === latestMessage.text &&
-                m.direction === 'outbound' &&
-                (new Date().getTime() - new Date(m.sentAt).getTime() < 2000)
-            );
-
-            if (isDuplicate && latestMessage.direction === 'inbound') {
-                // Если это пришло наше же сообщение из сокета, просто игнорируем его,
-                // так как мы его уже отрисовали через handleSend/takePhoto
-                return prev;
+        // 2. Индикатор "Печатает..."
+        if (latestMessage.event === 'typing' && latestMessage.conversationId === id) {
+            // Показываем только если печатает собеседник (не мы)
+            if (latestMessage.userId !== currentUser?.id) {
+                setIsTyping(true);
+                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                // Скрываем через 3 секунды, если новых событий нет
+                typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
             }
+            return;
+        }
 
-            return [...prev, latestMessage as Message];
-        });
+        // 3. Новое сообщение (твой текущий код)
+        if (!latestMessage.event) {
+            setIsTyping(false); // Сразу скрываем "печатает", если пришло сообщение
 
-        setTimeout(scrollToBottom, 50);
-    }, [latestMessage]);
+            setMessages(prev => {
+                // 1. Проверяем по ID (уже есть в базе)
+                if (prev.some(m => m.id === latestMessage.id)) return prev;
+
+                // 2. Проверяем "оптимистичные" сообщения (те, что мы отправили сами)
+                // Если в списке есть сообщение с таким же текстом, отправленное менее 2 секунд назад
+                // и оно помечено как 'outbound', заменяем его или игнорируем дубль
+                const isDuplicate = prev.some(m =>
+                    m.text === latestMessage.text &&
+                    m.direction === 'outbound' &&
+                    (new Date().getTime() - new Date(m.sentAt).getTime() < 2000)
+                );
+
+                if (isDuplicate && latestMessage.direction === 'inbound') {
+                    // Если это пришло наше же сообщение из сокета, просто игнорируем его,
+                    // так как мы его уже отрисовали через handleSend/takePhoto
+                    return prev;
+                }
+
+                return [...prev, latestMessage as Message];
+            });
+
+            setTimeout(scrollToBottom, 50);
+        }
+    }, [latestMessage, conversation?.contact?.id, id, currentUser?.id]);
 
     const fetchChat = async () => {
         try {
@@ -179,7 +205,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                         {getChannelIcon(conversation.type)}
                     </Box>
                     <Typography variant="caption" color={isContactOnline ? "#44b700" : "text.secondary"}>
-                        {isContactOnline ? 'в сети' : 'был(а) недавно'} • {conversation.type ? conversation.type.toUpperCase() : 'CHAT'}
+                        {isContactOnline ? '• в сети' : 'был(а) недавно'} • {conversation.type ? conversation.type.toUpperCase() : 'CHAT'}
                     </Typography>
                 </Box>
             </Box>
@@ -248,11 +274,30 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 <div ref={messagesEndRef} />
             </Box>
 
+            {/* Индикатор печати */}
+            {isTyping && (
+                <Box sx={{ px: 2, py: 0.5, bgcolor: 'rgba(255,255,255,0.8)', position: 'absolute', bottom: 80, left: 20, borderRadius: '10px', zIndex: 5 }}>
+                    <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'primary.main' }}>
+                        {conversation.contact?.mainName} печатает...
+                    </Typography>
+                </Box>
+            )}
+
             {/* Input Area */}
             <Box sx={{ p: 2, bgcolor: 'white', borderTop: 1, borderColor: 'divider', display: 'flex', alignItems: 'center' }}>
                 <IconButton onClick={takePhoto} color="primary" sx={{ mr: 1 }}><PhotoCameraIcon /></IconButton>
                 <TextField fullWidth size="small" placeholder="Напишите сообщение..." value={newMessageText}
-                           onChange={(e) => setNewMessageText(e.target.value)}
+                           onChange={(e) => {
+                               setNewMessageText(e.target.value)
+                               // Отправляем событие "печатает", если сокет готов
+                               if (socket && id && e.target.value.length > 0) {
+                                   // Мы просто шлем событие, Node.js сам разбросает его по комнате
+                                   socket.emit('typing', {
+                                       conversationId: id,
+                                       userId: currentUser?.id
+                                   });
+                               }
+                           }}
                            onKeyDown={(e) => e.key === 'Enter' && handleSend()}
                            sx={{ '& .MuiOutlinedInput-root': { borderRadius: '25px', bgcolor: '#f1f3f4' } }}
                 />
