@@ -13,15 +13,13 @@ CURRENT_DIR = $(BASE_DIR)/current
 RSYNC_EXCLUDE = --exclude='.git' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env'
 DC_PROD = docker compose -p orion_prod
 DC_DEV = docker-compose
+DC_PROD_CMD = docker compose -p orion_prod -f docker-compose.prod.yml
 
-# По умолчанию показываем помощь
-help:
-	@echo "Доступные команды:"
-	@echo "  make reset-ws   - Полный перезапуск и пересборка вебсокетов"
-	@echo "  make logs-ws     - Логи вебсокетов в реальном времени"
-	@echo "  make restart     - Перезапуск всех контейнеров"
-	@echo "  make build       - Полная пересборка проекта"
-	@echo "  make cache       - Очистка кэша Symfony"
+.PHONY: help dev build deploy rollback prod-status prod-logs prod-ws-logs dev-redis-sub prod-redis-sub
+
+help: ## Показать это справочное сообщение
+	@grep -E '^[a-zA-Z_-]+:.*?## .*$$' $(MAKEFILE_LIST) | sort | awk 'BEGIN {FS = ":.*?## "}; {printf "\033[36m%-25s\033[0m %s\n", $$1, $$2}'
+
 
 # Тот самый Hard Reset для вебсокетов
 reset-ws:
@@ -57,6 +55,21 @@ build:
 # Очистка кэша бэкенда
 cache:
 	$(DC) exec $(BACK) php bin/console cache:clear
+
+# --- РАЗРАБОТКА  ---
+dev-up: ## Запустить локальную версию (dev)
+	$(DC_DEV) up -d
+
+dev-build: ## Пересобрать локальные контейнеры
+	$(DC_DEV) up -d --build
+
+dev-routes: ## Посмотреть роуты Symfony (локально)
+	$(DC_DEV) exec orion_backend php bin/console debug:router
+
+dev-redis-sub: ## Слушать Redis chat_messages (локально)
+	$(DC_DEV) exec orion_redis redis-cli SUBSCRIBE chat_messages
+
+# --- ПРОДАКШЕН (JINO) ---
 
 deploy:
 	@echo "📦 Создание релиза $(RELEASE_NAME)..."
@@ -96,19 +109,31 @@ deploy-rollback:
 		fi"
 
 
-# --- КОМАНДЫ ДЛЯ ПРОДАКШЕНА (JINO) ---
+# --- МОНИТОРИНГ И ДЕБАГ (ПРОД) ---
+
+prod-status: ## Проверить статус контейнеров и ресурсы на Jino
+	@ssh $(SSH_HOST) "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && docker stats --no-stream"
+
+prod-logs: ## Логи бэкенда на Jino
+	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
+
+prod-ws-logs: ## Логи вебсокетов на Jino
+	ssh $(SSH_HOST) "docker logs -f orion_websocket_prod"
+
+prod-redis-sub: ## Слушать Redis chat_messages на Jino
+	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli SUBSCRIBE chat_messages"
+
+prod-db-dump: ## Сделать дамп БД с прода и скачать на Mac
+	ssh $(SSH_HOST) "docker exec orion_db_prod pg_dump -U app_user app_db" > backup_prod_$(shell date +%F).sql
+	@echo "💾 Дамп сохранен в backup_prod_$(shell date +%F).sql"
 
 # Посмотреть роуты на ПРОДЕ
 prod-routes:
 	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console debug:router"
 
 # Очистить кэш на ПРОДЕ
-prod-cache-cl:
+prod-cache-clear:
 	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console cache:clear"
-
-# Посмотреть логи бэкенда на ПРОДЕ
-prod-logs:
-	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
 
 # Проверить статус БД на проде
 prod-db-status:
@@ -117,6 +142,9 @@ prod-db-status:
 # Удалить старые релизы (оставить последние 3)
 prod-clean-releases:
 	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
+
+prod-create-user: ## Создать админа на Jino
+	ssh -t $(SSH_HOST) "docker exec -it -e APP_ENV=prod orion_backend_prod php bin/console app:create-user"
 
 
 # --- КОМАНДЫ ДЛЯ ВЕБСОКЕТОВ (Node.js) ---
