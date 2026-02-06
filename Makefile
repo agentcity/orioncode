@@ -7,7 +7,7 @@ FRONT = orion_frontend
 # Переменные для продуктивного сервера
 SSH_HOST = orion@orioncode.ru
 BASE_DIR = /var/www/orioncode
-RELEASE_NAME = $(shell date +%Y%m%d%H%M%S)
+RELEASE_NAME = $(shell date +%Y.%m.%d-%H.%M.%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
 CURRENT_DIR = $(BASE_DIR)/current
 RSYNC_EXCLUDE = --exclude='.git' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env'
@@ -84,7 +84,7 @@ deploy:
 
 deploy-rollback:
 	@echo "⏪ Откат на предыдущий релиз..."
-	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && \
+	@ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && \
 		PREV_REL=\$$(ls -1t | sed -n '2p') && \
 		if [ -n \"\$$PREV_REL\" ]; then \
 			ln -sfn $(BASE_DIR)/releases/\$$PREV_REL $(CURRENT_DIR) && \
