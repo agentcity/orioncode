@@ -4,6 +4,15 @@ WS = orion_websocket
 BACK = orion_backend
 FRONT = orion_frontend
 
+# Переменные для продуктивного сервера
+SSH_HOST = orion@orioncode.ru
+BASE_DIR = /var/www/orioncode
+RELEASE_NAME = $(shell date +%Y%m%d%H%M%S)
+RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
+CURRENT_DIR = $(BASE_DIR)/current
+RSYNC_EXCLUDE = --exclude='.git' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env'
+
+
 # По умолчанию показываем помощь
 help:
 	@echo "Доступные команды:"
@@ -47,3 +56,36 @@ build:
 # Очистка кэша бэкенда
 cache:
 	$(DC) exec $(BACK) php bin/console cache:clear
+
+deploy:
+	@echo "📦 Создание релиза $(RELEASE_NAME)..."
+	ssh $(SSH_HOST) "mkdir -p $(RELEASE_DIR)"
+
+	@echo "🚀 Загрузка кода..."
+	rsync -avz $(RSYNC_EXCLUDE) ./ $(SSH_HOST):$(RELEASE_DIR)
+
+	@echo "🔗 Настройка связей (shared .env)..."
+	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
+
+	@echo "🏗️ Сборка Docker на сервере..."
+	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker-compose -f docker-compose.prod.yml up -d --build"
+
+	@echo "🔄 Переключение симлинка на новый релиз..."
+	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
+
+	@echo "🧹 Удаление старых релизов (оставляем последние 3)..."
+	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
+	@echo "✅ Деплой завершен: https://app.orioncode.ru"
+
+deploy-rollback:
+	@echo "⏪ Откат на предыдущий релиз..."
+	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && \
+		PREV_REL=\$$(ls -1t | sed -n '2p') && \
+		if [ -n \"\$$PREV_REL\" ]; then \
+			ln -sfn $(BASE_DIR)/releases/\$$PREV_REL $(CURRENT_DIR) && \
+			cd $(CURRENT_DIR) && \
+			docker-compose -f docker-compose.prod.yml up -d && \
+			echo \"✅ Откатились на \$$PREV_REL\"; \
+		else \
+			echo \"❌ Предыдущий релиз не найден\"; \
+		fi"
