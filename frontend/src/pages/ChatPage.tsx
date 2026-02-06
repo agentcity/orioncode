@@ -61,22 +61,26 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
 
     useEffect(() => {
-        if (!latestMessage || latestMessage.event) return;
+        if (!latestMessage) return;
 
-        // 1. Статус "В сети"
-        if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
-            setIsContactOnline(latestMessage.status);
-            return;
-        }
+        // Если это СОБЫТИЕ (typing или статус)
+        if (latestMessage.event) {
+            // 1. Статус "В сети"
+            if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
+                setIsContactOnline(latestMessage.status);
+                return;
+            }
 
-        // 2. Индикатор "Печатает..."
-        if (latestMessage.event === 'typing' && latestMessage.conversationId === id) {
-            // Показываем только если печатает собеседник (не мы)
-            if (latestMessage.userId !== currentUser?.id) {
-                setIsTyping(true);
-                if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
-                // Скрываем через 3 секунды, если новых событий нет
-                typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+            // 2. Индикатор "Печатает..."
+            if (latestMessage.event === 'typing' && String(latestMessage.conversationId) === String(id)) {
+                // Показываем только если печатает собеседник (не мы)
+                if (String(latestMessage.userId) !== String(currentUser?.id)) {
+                    setIsTyping(true);
+                    if (typingTimeoutRef.current) clearTimeout(typingTimeoutRef.current);
+                    // Скрываем через 3 секунды, если новых событий нет
+                    typingTimeoutRef.current = setTimeout(() => setIsTyping(false), 3000);
+                }
+                return;
             }
             return;
         }

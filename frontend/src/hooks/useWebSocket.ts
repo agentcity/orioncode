@@ -17,13 +17,11 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
         const socket = socketRef.current;
 
         const onConnect = () => {
-            console.log('✅ WS: Connected');
             if (userId) socket.emit('authenticate', userId);
             if (conversationId) socket.emit('join_conversation', conversationId);
         };
 
         const onNewMessage = (payload: any) => {
-            console.log('✉️ WS: New message received', payload);
             setLatestMessage(payload);
         };
 

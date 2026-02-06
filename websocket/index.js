@@ -8,6 +8,11 @@ const io = new Server({ cors: { origin: "*" } });
 subscriber.on("connect", () => console.log("✅ Redis: Connected"));
 
 io.on("connection", (socket) => {
+    socket.on("authenticate", (userId) => {
+        socket.userId = userId;
+        // Рассылаем всем: "Я в сети!"
+        io.emit("newMessage", { event: "userStatusChanged", userId, status: true });
+    });
     socket.on("join_conversation", (id) => {
         socket.join(`conversation:${id}`);
         console.log(`👤 Socket ${socket.id} joined conversation:${id}`);
