@@ -35,6 +35,7 @@ services:
       APP_DEBUG: '0'
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@orion_db_prod:5432/${DB_NAME}?serverVersion=13&charset=utf8"
+      DEFAULT_URI: https://api.orioncode.ru
       REDIS_URL: "redis://orion_redis_prod:6379"
       MESSENGER_TRANSPORT_DSN: "redis://orion_redis_prod:6379/0"
     depends_on:
