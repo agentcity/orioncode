@@ -46,6 +46,9 @@ ENV COMPOSER_ALLOW_SUPERUSER=1 \
 # копируем только composer-файлы
 COPY composer.json composer.lock* /srv/backend/
 
+# Создаем пустой файл .env, чтобы Symfony не выдавал PathException
+RUN touch .env
+
 # устанавливаем только prod-зависимости, НЕ выполняя скрипты
 RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoloader --no-scripts
 
