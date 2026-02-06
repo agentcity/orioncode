@@ -117,16 +117,6 @@ prod-status: ## Проверить статус контейнеров и рес
 prod-logs: ## Логи бэкенда на Jino
 	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
 
-prod-ws-logs: ## Логи вебсокетов на Jino
-	ssh $(SSH_HOST) "docker logs -f orion_websocket_prod"
-
-prod-redis-sub: ## Слушать Redis chat_messages на Jino
-	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli SUBSCRIBE chat_messages"
-
-prod-db-dump: ## Сделать дамп БД с прода и скачать на Mac
-	ssh $(SSH_HOST) "docker exec orion_db_prod pg_dump -U app_user app_db" > backup_prod_$(shell date +%F).sql
-	@echo "💾 Дамп сохранен в backup_prod_$(shell date +%F).sql"
-
 # Посмотреть роуты на ПРОДЕ
 prod-routes:
 	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console debug:router"
@@ -168,10 +158,6 @@ prod-ws-restart:
 
 # --- МОНИТОРИНГ REDIS (КАНАЛ CHAT_MESSAGES) ---
 
-# Слушать сообщения в Redis локально (Mac)
-dev-redis-sub:
-	$(DC_DEV) exec orion_redis redis-cli SUBSCRIBE chat_messages
-
 # Слушать сообщения в Redis на ПРОДЕ (Jino)
 # Нажми Ctrl+C, чтобы остановить прослушивание
 prod-redis-sub:
@@ -184,6 +170,19 @@ prod-redis-monitor:
 # Если хочешь именно зайти внутрь (интерактивно), используй -t у SSH:
 prod-db-shell:
 	ssh -t $(SSH_HOST) "docker exec -it orion_db_prod psql -U $(DB_USER) -d $(DB_NAME)"
+
+# --- РАБОТА С БАЗОЙ ДАННЫХ ---
+
+prod-db-dump: ## Сделать дамп БД с прода в папку backups/ на Mac
+	@mkdir -p backups
+	@echo "📡 Подключение к базе на проде..."
+	@ssh $(SSH_HOST) "docker exec orion_db_prod sh -c 'pg_dump -U \$$POSTGRES_USER \$$POSTGRES_DB'" > backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql
+	@echo "✅ Дамп успешно сохранен в: backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql"
+
+dev-db-restore: ## Накатить последний дамп из папки backups на ЛОКАЛЬНУЮ БД (Mac)
+	@echo "🔄 Восстановление локальной БД из последнего бэкапа..."
+	@ls -t backups/*.sql | head -n 1 | xargs -I {} sh -c 'cat {} | docker-compose exec -T orion_db psql -U app_user -d app_db'
+	@echo "✅ Локальная база синхронизирована с продом!"
 
 
 # --- МОБИЛЬНОЕ ПРИЛОЖЕНИЕ (Capacitor / Android) ---

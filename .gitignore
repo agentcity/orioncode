@@ -14,3 +14,4 @@ backend/vendor/
 backend/public/bundles/
 backend/.phpunit.result.cache
 backend/.php-cs-fixer.cache
+backups/
