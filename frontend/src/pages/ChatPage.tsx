@@ -58,32 +58,25 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
     useEffect(() => {
         if (!latestMessage) return;
-        if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
-            setIsContactOnline(latestMessage.status);
-        }
-        if (latestMessage.conversationId === id) {
+
+        // Если это сообщение из сокета и оно не системное событие
+        if (!latestMessage.event) {
             setMessages(prev => {
-                // Если сообщение уже есть в списке (по ID), ничего не делаем
+                // Если сообщение уже есть в списке (по ID), не дублируем
                 if (prev.some(m => m.id === latestMessage.id)) return prev;
-
-                // Если пришло сообщение, которое заменяет наше "временное" (совпадает текст)
-                // Но лучше просто добавлять, если ID уникален
-                const newMessage = {
-                    ...latestMessage,
-                    // Важно: пробрасываем senderId для правильного отображения сторон
-                    payload: latestMessage.payload || {
-                        senderId: latestMessage.direction === 'outbound' ? currentUser?.id : 'other'
-                    }
-                };
-
-                return [...prev, newMessage as Message];
+                return [...prev, latestMessage];
             });
 
-            // Автопрокрутка вниз при новом сообщении
+            // ВАЖНО: Сразу скроллим вниз
             setTimeout(scrollToBottom, 100);
 
+            // Звук только если сообщение чужое
+            // const isMine = String(latestMessage.payload?.senderId) === String(currentUser?.id);
+            // if (!isMine) {
+            //     audioRef.current.play().catch(() => {});
+            // }
         }
-    }, [latestMessage, id, conversation, currentUser]);
+    }, [latestMessage, currentUser?.id]);
 
     const fetchChat = async () => {
         try {

@@ -145,28 +145,30 @@ class MessageController extends AbstractController
 
             // ПУБЛИКАЦИЯ В REDIS (для Socket.io)
             try {
-                $redis = new \Redis();
-                $redis->connect('orion_redis', 6379);
+                // Создаем чистое соединение с Redis
+                $redis = \Symfony\Component\Cache\Adapter\RedisAdapter::createConnection('redis://orion_redis:6379');
 
-                // Собираем данные вручную, чтобы точно не было пустых скобок []
-                $data = [
-                    'conversationId' => $conversation->getId()->toString(),
+                $messageData = [
+                    'id' => $message->getId()->toString(),
+                    'text' => $message->getText(),
+                    'direction' => $message->getDirection(),
+                    'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
                     'payload' => [
-                        'id' => $message->getId()->toString(),
-                        'text' => $message->getText(),
-                        'direction' => $message->getDirection(),
-                        'status' => $message->getStatus(),
-                        'sentAt' => $message->getSentAt()->format(\DateTime::ATOM),
-                        'payload' => [
-                            'senderId' => $this->getUser()->getId()->toString(),
-                            'filePath' => $message->getPayload()['filePath'] ?? null
-                        ]
+                        'senderId' => $this->getUser()->getId()->toString()
                     ]
                 ];
 
-                $redis->publish('chat_messages', json_encode($data));
+                $redisData = [
+                    'conversationId' => $conversation->getId()->toString(),
+                    'payload' => $messageData
+                ];
+
+                // Публикуем. Важно: канал "chat_messages"
+                $redis->publish('chat_messages', json_encode($redisData));
+
             } catch (\Exception $e) {
-                error_log($e->getMessage());
+                // Если здесь будет ошибка, она запишется в логи докера
+                error_log("CRITICAL REDIS ERROR: " . $e->getMessage());
             }
 
             // Отправка в Redis через Messenger

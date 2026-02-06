@@ -7,28 +7,29 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
     const socketRef = useRef<Socket | null>(null);
 
     useEffect(() => {
-        if (!socketRef.current) {
-            console.log('Попытка подключения к WS:', WS_URL);
-            socketRef.current = io(WS_URL, {
-                transports: ["websocket"]
-            });
+        const socket = socketRef.current;
+        if (!socket) return;
 
-            socketRef.current.on('connect', () => {
-                console.log('✅ WS подключен к серверу!');
-            });
-
-            socketRef.current.on('connect_error', (err) => {
-                console.error('❌ Ошибка подключения к WS:', err.message);
-            });
+        // Если мы уже подключены, но сменили чат - заходим в новую комнату сразу
+        if (socket.connected && conversationId) {
+            console.log('WS: Re-joining room', conversationId);
+            socket.emit('join_conversation', conversationId);
         }
 
-        // ПЕРЕПОДПИСКА при смене чата
-        if (conversationId && socketRef.current?.connected) {
-            console.log('WS: Joining conversation room:', conversationId);
-            socketRef.current.emit('join_conversation', conversationId);
-        }
+        // Слушаем коннект
+        const onConnect = () => {
+            console.log('WS: Connected');
+            if (conversationId) socket.emit('join_conversation', conversationId);
+        };
 
-    }, [conversationId, userId]); // Следим за сменой чата и юзера
+        socket.on('connect', onConnect);
+        // ... остальные обработчики
+
+        return () => {
+            socket.off('connect', onConnect);
+            // Не закрывай сокет совсем, просто сними слушатели
+        };
+    }, [conversationId]);
 
     return { latestMessage, socket: socketRef.current };
 };
