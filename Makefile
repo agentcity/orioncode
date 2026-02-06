@@ -117,6 +117,10 @@ prod-status: ## Проверить статус контейнеров и рес
 prod-logs: ## Логи бэкенда на Jino
 	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
 
+prod-nginx-logs-50: ## Логи бэкенда на Jino
+	ssh $(SSH_HOST) "docker logs orion_nginx_prod --tail 50"
+
+
 # Посмотреть роуты на ПРОДЕ
 prod-routes:
 	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console debug:router"
