@@ -1,9 +1,7 @@
-version: '3.8'
-
 name: orion_prod
 
 services:
-  # 1. База данных (Доступна только внутри сети)
+  # 1. База данных
   orion_db:
     image: postgres:13-alpine
     container_name: orion_db_prod
@@ -17,7 +15,7 @@ services:
     networks:
       - app_network
 
-  # 2. Redis для сокетов и кэша
+  # 2. Redis
   orion_redis:
     image: redis:6-alpine
     container_name: orion_redis_prod
@@ -25,7 +23,7 @@ services:
     networks:
       - app_network
 
-  # 3. Бэкенд (Symfony API)
+  # 3. Бэкенд (Symfony)
   orion_backend:
     build:
       context: ./backend
@@ -36,15 +34,15 @@ services:
       APP_ENV: prod
       APP_DEBUG: '0'
       APP_SECRET: ${APP_SECRET}
-      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@orion_db:5432/${DB_NAME}?serverVersion=13&charset=utf8"
-      MESSENGER_TRANSPORT_DSN: "redis://orion_redis:6379/0"
+      DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@orion_db_prod:5432/${DB_NAME}?serverVersion=13&charset=utf8"
+      MESSENGER_TRANSPORT_DSN: "redis://orion_redis_prod:6379/0"
     depends_on:
       - orion_db
       - orion_redis
     networks:
       - app_network
 
-  # 4. Вебсокеты (Socket.io)
+  # 4. Вебсокеты (Node.js)
   orion_websocket:
     build:
       context: ./websocket
@@ -52,7 +50,7 @@ services:
     container_name: orion_websocket_prod
     restart: always
     environment:
-      REDIS_URL: "redis://orion_redis:6379"
+      REDIS_URL: "redis://orion_redis_prod:6379"
     depends_on:
       - orion_redis
     networks:
@@ -64,7 +62,6 @@ services:
       context: ./frontend
       dockerfile: Dockerfile
       args:
-        # Эти аргументы React подхватит при сборке (npm run build)
         - REACT_APP_API_URL=https://api.orioncode.ru
         - REACT_APP_WS_URL=https://ws.orioncode.ru
     container_name: orion_frontend_prod
@@ -72,14 +69,13 @@ services:
     networks:
       - app_network
 
-  # 6. Nginx (Единый шлюз для app., api., ws.)
+  # 6. Nginx (Единый вход)
   orion_nginx:
     image: nginx:1.26-alpine
     container_name: orion_nginx_prod
     restart: always
     ports:
       - "80:80"
-      # Если Jino проксирует HTTPS на твой 80, 443 здесь не нужен.
     volumes:
       - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./backend:/srv/backend:ro

@@ -74,8 +74,8 @@ deploy:
 	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
 
 	@echo "🐘 Миграции и кэш..."
-	ssh $(SSH_HOST) "docker compose -p orion_prod exec -T orion_backend_prod php bin/console doctrine:migrations:migrate --no-interaction"
-	ssh $(SSH_HOST) "docker compose -p orion_prod exec -T orion_backend_prod php bin/console cache:clear"
+	ssh $(SSH_HOST) "docker exec -t orion_backend_prod php bin/console doctrine:migrations:migrate --no-interaction"
+	ssh $(SSH_HOST) "docker exec -t orion_backend_prod php bin/console cache:clear"
 
 	@echo "🧹 Удаление старых релизов (оставляем последние 3)..."
 	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
