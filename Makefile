@@ -11,7 +11,8 @@ RELEASE_NAME = $(shell date +%Y%m%d%H%M%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
 CURRENT_DIR = $(BASE_DIR)/current
 RSYNC_EXCLUDE = --exclude='.git' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env'
-
+DC_PROD = docker compose -p orion_prod
+DC_DEV = docker-compose
 
 # По умолчанию показываем помощь
 help:
@@ -88,8 +89,91 @@ deploy-rollback:
 		if [ -n \"\$$PREV_REL\" ]; then \
 			ln -sfn $(BASE_DIR)/releases/\$$PREV_REL $(CURRENT_DIR) && \
 			cd $(CURRENT_DIR) && \
-			docker-compose -f docker-compose.prod.yml up -d && \
-			echo \"✅ Откатились на \$$PREV_REL\"; \
+			docker compose -p orion_prod -f docker-compose.prod.yml up -d --remove-orphans && \
+			echo \"✅ Успешно откатились на релиз: \$$PREV_REL\"; \
 		else \
-			echo \"❌ Предыдущий релиз не найден\"; \
+			echo \"❌ Предыдущий релиз не найден в папке releases\"; \
 		fi"
+
+
+# --- КОМАНДЫ ДЛЯ ПРОДАКШЕНА (JINO) ---
+
+# Посмотреть роуты на ПРОДЕ
+prod-routes:
+	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console debug:router"
+
+# Очистить кэш на ПРОДЕ
+prod-cache-cl:
+	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console cache:clear"
+
+# Посмотреть логи бэкенда на ПРОДЕ
+prod-logs:
+	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
+
+# Проверить статус БД на проде
+prod-db-status:
+	ssh $(SSH_HOST) "docker exec -t orion_backend_prod php bin/console doctrine:migrations:status"
+
+# Удалить старые релизы (оставить последние 3)
+prod-clean-releases:
+	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
+
+
+# --- КОМАНДЫ ДЛЯ ВЕБСОКЕТОВ (Node.js) ---
+
+# Логи сокетов локально (Mac)
+dev-ws-logs:
+	$(DC_DEV) logs -f orion_websocket
+
+# Перезапуск сокетов локально (быстрый сброс соединений)
+dev-ws-restart:
+	$(DC_DEV) restart orion_websocket
+
+# Логи сокетов на ПРОДЕ (Jino)
+# Поможет увидеть, прилетают ли Typing и NewMessage из Redis
+prod-ws-logs:
+	ssh $(SSH_HOST) "docker logs -f orion_websocket_prod"
+
+# Перезапуск сокетов на ПРОДЕ
+prod-ws-restart:
+	ssh $(SSH_HOST) "docker restart orion_websocket_prod"
+
+# --- МОНИТОРИНГ REDIS (КАНАЛ CHAT_MESSAGES) ---
+
+# Слушать сообщения в Redis локально (Mac)
+dev-redis-sub:
+	$(DC_DEV) exec orion_redis redis-cli SUBSCRIBE chat_messages
+
+# Слушать сообщения в Redis на ПРОДЕ (Jino)
+# Нажми Ctrl+C, чтобы остановить прослушивание
+prod-redis-sub:
+	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli SUBSCRIBE chat_messages"
+
+# Мониторинг всех команд Redis на проде
+prod-redis-monitor:
+	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli monitor"
+
+# Если хочешь именно зайти внутрь (интерактивно), используй -t у SSH:
+prod-db-shell:
+	ssh -t $(SSH_HOST) "docker exec -it orion_db_prod psql -U $(DB_USER) -d $(DB_NAME)"
+
+
+# --- МОБИЛЬНОЕ ПРИЛОЖЕНИЕ (Capacitor / Android) ---
+
+# Полная сборка мобильной версии через твой скрипт
+mobile-build:
+	@echo "📱 Запуск сборки мобильной версии из папки frontend..."
+	chmod +x frontend/build-mobile.sh
+	cd frontend && ./build-mobile.sh
+
+# Открыть проект в Android Studio (удобно для финальной сборки APK)
+mobile-open:
+	cd frontend && npx cap open android
+
+# Быстрая синхронизация изменений фронтенда без пересборки натива
+mobile-copy:
+	cd frontend && npm run build && npx cap copy
+
+# Проверка состояния Capacitor (плагины, платформы)
+mobile-status:
+	cd frontend && npx cap doctor
