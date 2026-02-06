@@ -20,6 +20,9 @@ io.on("connection", (socket) => {
             userId: data.userId
         });
     });
+    socket.on("disconnect", () => {
+        console.log(`❌ Socket disconnected: ${socket.id}`);
+    });
 });
 
 // Слушаем ОБА канала на всякий случай
