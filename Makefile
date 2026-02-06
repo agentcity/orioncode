@@ -171,17 +171,18 @@ prod-redis-monitor:
 prod-db-shell:
 	ssh -t $(SSH_HOST) "docker exec -it orion_db_prod psql -U $(DB_USER) -d $(DB_NAME)"
 
-# --- РАБОТА С БАЗОЙ ДАННЫХ ---
+# --- РАБОТА С БАЗОЙ ДАННЫХ (СЖАТИЕ GZIP) ---
 
-prod-db-dump: ## Сделать дамп БД с прода в папку backups/ на Mac
+prod-db-dump: ## Дамп базы с прода (сжатый gzip) в папку backups/
 	@mkdir -p backups
-	@echo "📡 Подключение к базе на проде..."
-	@ssh $(SSH_HOST) "docker exec orion_db_prod sh -c 'pg_dump -U \$$POSTGRES_USER \$$POSTGRES_DB'" > backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql
-	@echo "✅ Дамп успешно сохранен в: backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql"
+	@echo "📡 Сжимаем и скачиваем дамп с Jino..."
+	@ssh $(SSH_HOST) "docker exec orion_db_prod sh -c 'pg_dump -U \$$POSTGRES_USER \$$POSTGRES_DB | gzip -c'" > backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql.gz
+	@echo "✅ Сжатый дамп сохранен: backups/backup_prod_$(shell date +%Y.%m.%d-%H.%M.%S).sql.gz"
+	@du -h backups/backup_prod_*.gz | tail -n 1
 
-dev-db-restore: ## Накатить последний дамп из папки backups на ЛОКАЛЬНУЮ БД (Mac)
-	@echo "🔄 Восстановление локальной БД из последнего бэкапа..."
-	@ls -t backups/*.sql | head -n 1 | xargs -I {} sh -c 'cat {} | docker-compose exec -T orion_db psql -U app_user -d app_db'
+dev-db-restore: ## Распаковать и накатить последний дамп на ЛОКАЛЬНУЮ БД (Mac)
+	@echo "🔄 Распаковка и восстановление локальной БД..."
+	@ls -t backups/*.sql.gz | head -n 1 | xargs -I {} sh -c 'gunzip -c {} | $(DC_DEV) exec -T orion_db psql -U app_user -d app_db'
 	@echo "✅ Локальная база синхронизирована с продом!"
 
 
