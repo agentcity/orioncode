@@ -155,22 +155,27 @@ deploy-safe: ## Сначала тесты, потом деплой
 	@make test-all && (echo "✅ Тесты пройдены! Начинаю деплой..."; make deploy) || (echo "❌ ДЕПЛОЙ ОТМЕНЕН: Тесты упали!"; exit 1)
 
 
-prod-check-maintenance: ## Имитация работ на проде (через реальный путь)
-	@echo "🔍 Определяем реальный путь проекта..."
+prod-check-maintenance: ## Имитация работ на проде
+	@echo "🔍 Определяем реальный путь проекта на Jino..."
 	$(eval REAL_PATH := $(shell ssh $(SSH_HOST) "readlink -f $(CURRENT_DIR)"))
-	@echo "🛠️ Останавливаем бэкенд в $(REAL_PATH)..."
-	ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose stop orion_backend_prod"
 
-	@echo "🔎 Проверяем ответ сервера (ждем 502/503)..."
-	@curl -s -I http://api.orioncode.ru | grep -E "502|503" || ( \
-		echo "❌ ОШИБКА: Заглушка НЕ работает!"; \
-		ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose start orion_backend_prod"; \
+	@echo "🛠️ Останавливаем бэкенд [orion_backend] в проекте orion_prod..."
+	@ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose -p orion_prod stop orion_backend"
+
+	@echo "🔎 Проверяем ответ API (ожидаем 502/503 и заглушку)..."
+	@sleep 3
+	@curl -s -I https://api.orioncode.ru | grep -E "502|503" || ( \
+		echo "❌ ОШИБКА: Заглушка не отдается! Проверь nginx/prod.conf и fastcgi_intercept_errors"; \
+		ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose -p orion_prod start orion_backend"; \
 		exit 1 \
 	)
 
-	@echo "✅ Заглушка работает! Включаем бэкенд обратно..."
-	@ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose start orion_backend_prod"
-	@echo "🚀 Бэкенд онлайн."
+	@echo "✅ Заглушка работает! Восстанавливаем работу..."
+	@ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose -p orion_prod start orion_backend"
+	@echo "🚀 OrionCode снова в строю."
+
+
+
 
 
 
