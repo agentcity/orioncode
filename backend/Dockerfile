@@ -56,7 +56,18 @@ RUN composer install --no-dev --no-interaction --prefer-dist --optimize-autoload
 COPY . /srv/backend
 
 # выставляем prod окружение и явно очищаем/кешируем кеш
+
+# 1. Указываем АРГУМЕНТЫ (они видны только при сборке)
+ARG DATABASE_URL="postgresql://db_user:db_password@127.0.0.1:5432/db_name?serverVersion=13&charset=utf8"
+ARG REDIS_URL="redis://localhost:6379"
+ARG APP_SECRET="temporary_secret_for_build"
+
+# 2. Пробрасываем их в переменные окружения ДЛЯ СБОРКИ КЭША
+ENV DATABASE_URL=${DATABASE_URL}
+ENV REDIS_URL=${REDIS_URL}
+ENV APP_SECRET=${APP_SECRET}
 ENV APP_ENV=prod APP_DEBUG=0
+
 RUN php bin/console cache:clear --no-warmup --no-interaction --env=prod \
  && php bin/console cache:warmup --no-interaction --env=prod || true
 
