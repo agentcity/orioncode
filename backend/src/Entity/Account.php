@@ -10,11 +10,10 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
 #[ORM\Entity]
-#[ORM\Table(name: 'accounts', indexes: [
-    new ORM\Index(columns: ['user_id'], name: 'idx_account_user'),
-    new ORM\Index(columns: ['type'], name: 'idx_account_type'),
-    new ORM\Index(columns: ['status'], name: 'idx_account_status')
-])]
+#[ORM\Table(name: 'accounts')]
+#[ORM\Index(columns: ['user_id'], name: 'idx_account_user')]
+#[ORM\Index(columns: ['type'], name: 'idx_account_type')]
+#[ORM\Index(columns: ['status'], name: 'idx_account_status')]
 #[ORM\HasLifecycleCallbacks]
 class Account
 {

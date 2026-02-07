@@ -35,9 +35,19 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const login = async (email: string, password: string) => {
         setLoading(true);
         try {
-            await axiosClient.post('/login', { email, password });
-            // Если используете JWT, сохраните токен: localStorage.setItem('jwt_token', response.data.token);
-            // Затем получите данные пользователя
+            // 1. Получаем ответ (там должен быть token)
+            const response = await axiosClient.post('/login', { email, password });
+
+            // 2. СОХРАНЯЕМ ТОКЕН (Ключ должен совпадать с axiosClient!)
+            if (response.data.token) {
+                localStorage.setItem('jwt_token', response.data.token);
+                console.log('Token saved:', response.data.token);
+
+            }else {
+                console.error('No token received from backend!');
+            }
+
+            // 3. Теперь запрос /me уйдет с заголовком Authorization
             const userResponse = await axiosClient.get('/users/me');
             setUser(userResponse.data);
         } catch (error) {
@@ -49,9 +59,11 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     };
 
     const logout = () => {
-        localStorage.removeItem('token');
-        localStorage.removeItem('user'); // Также очистим данные юзера из хранилища
-        setUser(null); // Это автоматически сделает isAuthenticated = false
+        localStorage.removeItem('jwt_token'); // <--- Ключ как в axiosClient!
+        localStorage.removeItem('user');
+        setUser(null);
+        // Опционально: редирект, чтобы сбросить все стейты
+        window.location.href = '/login';
     };
 
     return (

@@ -7,10 +7,10 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'attachments', indexes: [
-    new ORM\Index(columns: ['message_id'], name: 'idx_attachment_message')
-])]
+#[ORM\Entity(repositoryClass: AttachmentRepository::class)]
+#[ORM\Table(name: 'attachments')]
+// Выносим индекс в отдельный атрибут:
+#[ORM\Index(columns: ['message_id'], name: 'idx_attachment_message')]
 #[ORM\HasLifecycleCallbacks]
 class Attachment
 {

@@ -48,26 +48,68 @@ logs-ws:
 restart:
 	$(DC) restart
 
-# Полная пересборка без кэша
-build:
-	$(DC) up -d --build
 
-# Очистка кэша бэкенда
-cache:
-	$(DC) exec $(BACK) php bin/console cache:clear
 
 # --- РАЗРАБОТКА  ---
 dev-up: ## Запустить локальную версию (dev)
 	$(DC_DEV) up -d
 
-dev-build: ## Пересобрать локальные контейнеры
+dev-build: ## Пересобрать локальные контейнеры (с остановкой системного Apache)
+	@echo "🛡️ Проверяем порт 8080 и останавливаем системный Apache, если он запущен..."
+	-sudo apachectl stop 2>/dev/null || true
+	-sudo killall httpd 2>/dev/null || true
+	@echo "🚀 Запуск сборки Docker..."
 	$(DC_DEV) up -d --build
 
 dev-routes: ## Посмотреть роуты Symfony (локально)
 	$(DC_DEV) exec orion_backend php bin/console debug:router
 
+# Очистка кэша бэкенда
+dev-cache-clear:
+	$(DC_DEV) exec orion_backend php bin/console cache:clear
+
 dev-redis-sub: ## Слушать Redis chat_messages (локально)
 	$(DC_DEV) exec orion_redis redis-cli SUBSCRIBE chat_messages
+
+dev-logs: ## Посмотреть логи бэкенда (локально на Mac)
+	$(DC_DEV) logs -f orion_backend
+
+
+dev-backend-logs-20: ## Логи бэкенда
+	$(DC_DEV) exec orion_backend tail -n 20 var/log/dev.log
+
+dev-db-sync: ## Синхронизировать структуру БД с PHP-кодом (локально на Mac)
+	@echo "🔄 Обновление структуры базы данных..."
+	$(DC_DEV) exec orion_backend php bin/console doctrine:schema:update --force
+	@echo "✅ База данных синхронизирована!"
+
+dev-db-migrate: ## Запустить миграции (локально на Mac)
+	$(DC_DEV) exec orion_backend php bin/console doctrine:migrations:migrate --no-interaction
+
+# --- ТЕСТИРОВАНИЕ ---
+
+dev-test: ## Подготовка БД и запуск тестов (локально)
+	@echo "🧪 Сброс тестового кэша..."
+	@$(DC_DEV) exec orion_backend rm -rf var/cache/test
+	@echo "🧪 Настройка тестовой БД..."
+	@$(DC_DEV) exec -e APP_ENV=test orion_backend php bin/console doctrine:database:create --if-not-exists
+	@$(DC_DEV) exec -e APP_ENV=test orion_backend php bin/console doctrine:schema:update --force
+	@echo "🚀 Запуск PHPUnit..."
+	@$(DC_DEV) exec -e APP_ENV=test orion_backend bin/phpunit
+
+dev-test-filter: ## Запустить конкретный тест (пример: make dev-test-filter name=UserTest)
+	$(DC_DEV) exec -e APP_ENV=test orion_backend bin/phpunit --filter $(name)
+
+dev-test-frontend: ## Запустить тесты фронтенда
+	cd frontend && npx playwright test
+
+dev-test-frontend-ui: ## Запустить тесты фронтенда c визуализацией
+	cd frontend && npx playwright test --ui
+
+
+test-all: ## Запустить ВСЕ тесты (Бэк + Фронт)
+	@make dev-test
+	@make test-frontend
 
 # --- ПРОДАКШЕН (JINO) ---
 
@@ -107,6 +149,10 @@ deploy-rollback:
 		else \
 			echo \"❌ Предыдущий релиз не найден в папке releases\"; \
 		fi"
+
+deploy-safe: ## Сначала тесты, потом деплой
+	@echo "🧪 Запуск тестов..."
+	@make test-all && (echo "✅ Тесты пройдены! Начинаю деплой..."; make deploy) || (echo "❌ ДЕПЛОЙ ОТМЕНЕН: Тесты упали!"; exit 1)
 
 
 # --- МОНИТОРИНГ И ДЕБАГ (ПРОД) ---

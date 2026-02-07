@@ -11,23 +11,19 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use DateTimeImmutable;
 
 #[ORM\Entity(repositoryClass: ConversationRepository::class)]
-#[ORM\Table(
-    name: 'conversations',
-    indexes: [
-        new ORM\Index(columns: ['account_id'], name: 'idx_conversation_account'),
-        new ORM\Index(columns: ['contact_id'], name: 'idx_conversation_contact'),
-        new ORM\Index(columns: ['external_id'], name: 'idx_conversation_external_id'),
-        new ORM\Index(columns: ['type'], name: 'idx_conversation_type'),
-        new ORM\Index(columns: ['status'], name: 'idx_conversation_status'),
-        new ORM\Index(columns: ['last_message_at'], name: 'idx_conversation_last_message'),
-        new ORM\Index(columns: ['assigned_to_id'], name: 'idx_conversation_assigned_to'),
-        new ORM\Index(columns: ['unread_count'], name: 'idx_conversation_unread_count'),
-        new ORM\Index(columns: ['account_id', 'type', 'external_id'], name: 'uniq_conversation_external')
-    ],
-    uniqueConstraints: [
-        new ORM\UniqueConstraint(columns: ['account_id', 'type', 'external_id'], name: 'uniq_conversation_external')
-    ]
-)]
+#[ORM\Table(name: 'conversations')]
+// ИНДЕКСЫ ВЫНОСИМ ОТДЕЛЬНО
+#[ORM\Index(columns: ['account_id'], name: 'idx_conversation_account')]
+#[ORM\Index(columns: ['contact_id'], name: 'idx_conversation_contact')]
+#[ORM\Index(columns: ['external_id'], name: 'idx_conversation_external_id')]
+#[ORM\Index(columns: ['type'], name: 'idx_conversation_type')]
+#[ORM\Index(columns: ['status'], name: 'idx_conversation_status')]
+#[ORM\Index(columns: ['last_message_at'], name: 'idx_conversation_last_message')]
+#[ORM\Index(columns: ['assigned_to_id'], name: 'idx_conversation_assigned_to')]
+#[ORM\Index(columns: ['unread_count'], name: 'idx_conversation_unread_count')]
+#[ORM\Index(columns: ['account_id', 'type', 'external_id'], name: 'idx_conversation_external_composite')]
+// УНИКАЛЬНЫЕ ОГРАНИЧЕНИЯ ТОЖЕ ОТДЕЛЬНО
+#[ORM\UniqueConstraint(name: 'uniq_conversation_external', columns: ['account_id', 'type', 'external_id'])]
 #[ORM\HasLifecycleCallbacks]
 class Conversation
 {
@@ -44,9 +40,10 @@ class Conversation
     #[Groups(['chat', 'conversation:list'])]
     private ?string $externalId = null;
 
-    #[ORM\Column(length: 50)]
+    #[ORM\Column(type: 'string', length: 255, nullable: false)]
     #[Groups(['chat', 'conversation:list'])]
-    private ?string $type = null;
+    private ?string $type = 'direct';
+
 
     #[ORM\Column(length: 50)]
     #[Groups(['chat', 'conversation:list'])]
@@ -72,7 +69,7 @@ class Conversation
     #[Groups(['chat', 'conversation:list'])]
     private ?User $targetUser = null;
 
-    #[ORM\Column(type: 'integer')]
+    #[ORM\Column(type: 'integer', options: ['default' => 0])]
     #[Groups(['chat', 'conversation:list'])]
     private int $unreadCount = 0;
 

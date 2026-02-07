@@ -10,14 +10,14 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity]
-#[ORM\Table(name: 'messages', indexes: [
-    new ORM\Index(columns: ['conversation_id'], name: 'idx_message_conversation'),
-    new ORM\Index(columns: ['sender_type'], name: 'idx_message_sender_type'),
-    new ORM\Index(columns: ['sender_id'], name: 'idx_message_sender_id'),
-    new ORM\Index(columns: ['direction'], name: 'idx_message_direction'),
-    new ORM\Index(columns: ['sent_at'], name: 'idx_message_sent_at')
-])]
+#[ORM\Entity(repositoryClass: MessageRepository::class)]
+#[ORM\Table(name: 'messages')]
+// Выносим каждый индекс в свой атрибут:
+#[ORM\Index(columns: ['conversation_id'], name: 'idx_message_conversation')]
+#[ORM\Index(columns: ['sender_type'], name: 'idx_message_sender_type')]
+#[ORM\Index(columns: ['sender_id'], name: 'idx_message_sender_id')]
+#[ORM\Index(columns: ['direction'], name: 'idx_message_direction')]
+#[ORM\Index(columns: ['sent_at'], name: 'idx_message_sent_at')]
 #[ORM\HasLifecycleCallbacks]
 class Message
 {
