@@ -164,7 +164,7 @@ prod-check-maintenance: ## Имитация работ на проде
 
 	@echo "🔎 Проверяем ответ API (ожидаем 502/503 и заглушку)..."
 	@sleep 3
-	@curl -s -I https://api.orioncode.ru | grep -E "502|503" || ( \
+	@curl -s -I http://api.orioncode.ru | grep -E "502|503" || ( \
 		echo "❌ ОШИБКА: Заглушка не отдается! Проверь nginx/prod.conf и fastcgi_intercept_errors"; \
 		ssh $(SSH_HOST) "cd $(REAL_PATH) && docker compose -p orion_prod start orion_backend"; \
 		exit 1 \

@@ -16,3 +16,8 @@ controllers:
 kernel:
     resource: App\Kernel
     type: attribute
+
+api_index:
+    path: /
+    controller: App\Controller\Api\IndexController::index
+    methods: [GET]
