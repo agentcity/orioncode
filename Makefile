@@ -5,7 +5,8 @@ BACK = orion_backend
 FRONT = orion_frontend
 
 # Переменные для продуктивного сервера
-SSH_HOST = orion@orioncode.ru
+SSH_HOST = orion@81.200.158.70
+# SSH_HOST = orion@orioncode.ru
 BASE_DIR = /var/www/orioncode
 RELEASE_NAME = $(shell date +%Y.%m.%d-%H.%M.%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
@@ -145,6 +146,7 @@ deploy-rollback:
 			ln -sfn $(BASE_DIR)/releases/\$$PREV_REL $(CURRENT_DIR) && \
 			cd $(CURRENT_DIR) && \
 			docker compose -p orion_prod -f docker-compose.prod.yml up -d --remove-orphans && \
+            docker compose -p orion_prod exec -T orion_backend php bin/console cache:clear --env=prod || true; \
 			echo \"✅ Успешно откатились на релиз: \$$PREV_REL\"; \
 		else \
 			echo \"❌ Предыдущий релиз не найден в папке releases\"; \
