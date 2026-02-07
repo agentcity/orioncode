@@ -1,33 +1,45 @@
 import { Capacitor } from '@capacitor/core';
 
-/**
- * Определяет базовый домен в зависимости от окружения
- */
 export const getBaseDomain = () => {
-    // 1. ПРИОРИТЕТ ДЛЯ ПРОДА (Jino)
-    // Если при сборке в Docker была передана переменная REACT_APP_API_URL
-    if (process.env.REACT_APP_API_URL || Capacitor.isNativePlatform()) {
-        return process.env.REACT_APP_API_URL;
+    const envUrl = process.env.REACT_APP_API_URL;
+
+    // 1. ЛОКАЛЬНО (MacBook)
+    if (!envUrl || envUrl.includes('localhost')) {
+        const host = window.location.hostname;
+        return `http://${host}:8080`;
     }
 
-    // 2. ДЛЯ МОБИЛЬНЫХ УСТРОЙСТВ (Capacitor)
-    // Пока переделали на прод Если запускаем на iOS/Android, используем твой локальный IP
-    if (Capacitor.isNativePlatform()) {
-        return 'http://192.168.1.13:8080';
-    }
+    // 2. ПРОД (Jino) или МОБИЛКА (Capacitor)
+    // Берем протокол текущей страницы (http: или https:)
+    const protocol = window.location.protocol;
 
-    // 3. ДЛЯ ЛОКАЛЬНОЙ РАЗРАБОТКИ (MacBook)
-    // Берем текущий хост из адресной строки (localhost или 127.0.0.1)
-    const host = window.location.hostname;
-    return `http://${host}:8080`;
+    // Если в envUrl уже есть протокол, возвращаем как есть,
+    // если нет (как мы договорились) — добавляем текущий протокол
+    return envUrl.startsWith('http') ? envUrl : `${protocol}//${envUrl}`;
 };
 
-// Полный URL для API запросов
+// Базовый URL для API
 export const API_URL = `${getBaseDomain()}/api`;
 
-/**
- * URL для WebSocket (Socket.io)
- * На проде берем из переменной, локально меняем порт 8080 на 3000
- */
-const base = getBaseDomain() || '';
-export const WS_URL = process.env.REACT_APP_WS_URL || base.replace(':8080', ':3000');
+// Универсальный URL для WebSocket
+export const getWsUrl = () => {
+    const envWsUrl = process.env.REACT_APP_WS_URL;
+    const base = getBaseDomain();
+
+    // Локально: меняем 8080 на 3000
+    if (base.includes('localhost')) {
+        return base.replace(':8080', ':3000');
+    }
+
+    // На проде: используем WS_URL из .env (ws.orioncode.ru)
+    // и подставляем правильный протокол (ws или wss)
+    const wsProtocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+
+    if (envWsUrl) {
+        return envWsUrl.startsWith('ws') ? envWsUrl : `${wsProtocol}//${envWsUrl}`;
+    }
+
+    return `${wsProtocol}//ws.orioncode.ru`;
+};
+
+export const WS_URL = getWsUrl();
