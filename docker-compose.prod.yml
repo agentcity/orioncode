@@ -66,6 +66,7 @@ services:
   orion_frontend:
     build:
       context: ./frontend
+      target: prod
       dockerfile: Dockerfile
       args:
         - REACT_APP_API_URL=https://api.orioncode.ru

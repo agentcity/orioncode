@@ -102,6 +102,7 @@ services:
     orion_frontend:
         build:
             context: frontend
+            target: dev
             dockerfile: Dockerfile
         container_name: orion_frontend
         ports:
