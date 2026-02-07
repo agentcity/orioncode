@@ -1,18 +1,118 @@
 <!DOCTYPE html>
-<html>
+<html lang="ru">
 <head>
-    <title>Обновление системы | OrionCode</title>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>OrionCode | Systems Calibration</title>
     <style>
-        body { text-align: center; padding: 150px; font-family: sans-serif; background: #f4f7f6; }
-        h1 { font-size: 40px; color: #333; }
-        p { font-size: 20px; color: #666; }
-        .spinner { border: 4px solid rgba(0,0,0,.1); width: 36px; height: 36px; border-radius: 50%; border-left-color: #09d; animation: spin 1s linear infinite; display: inline-block; }
-        @keyframes spin { 0% { transform: rotate(0deg); } 100% { transform: rotate(360deg); } }
+        :root {
+            --primary: #00f2ff;
+            --accent: #7000ff;
+            --bg: #050a10;
+        }
+        body, html {
+            margin: 0; padding: 0; width: 100%; height: 100%;
+            background: var(--bg);
+            color: #fff;
+            font-family: 'Segoe UI', Roboto, Helvetica, Arial, sans-serif;
+            overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
+        /* Анимированный космос */
+        .stars {
+            position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            background: radial-gradient(ellipse at bottom, #1B2735 0%, #090A0F 100%);
+            z-index: -1;
+        }
+        .star {
+            position: absolute; background: white; border-radius: 50%;
+            opacity: 0.5; animation: twinkle var(--duration) infinite;
+        }
+        @keyframes twinkle {
+            0%, 100% { opacity: 0.3; transform: scale(1); }
+            50% { opacity: 1; transform: scale(1.2); }
+        }
+        /* Стеклянная карта */
+        .card {
+            background: rgba(255, 255, 255, 0.05);
+            backdrop-filter: blur(15px);
+            border: 1px solid rgba(255, 255, 255, 0.1);
+            border-radius: 24px;
+            padding: 50px 40px;
+            text-align: center;
+            box-shadow: 0 25px 50px -12px rgba(0, 0, 0, 0.5);
+            max-width: 450px;
+            position: relative;
+            overflow: hidden;
+        }
+        .card::before {
+            content: ''; position: absolute; top: -50%; left: -50%; width: 200%; height: 200%;
+            background: conic-gradient(transparent, var(--primary), transparent 30%);
+            animation: rotate 4s linear infinite; z-index: -1;
+        }
+        @keyframes rotate { 100% { transform: rotate(360deg); } }
+        .inner-card { background: var(--bg); border-radius: 20px; padding: 30px; }
+
+        /* Сканер/Лоадер */
+        .scanner {
+            width: 80px; height: 80px; margin: 0 auto 30px;
+            position: relative;
+            border: 2px solid rgba(0, 242, 255, 0.2);
+            border-radius: 50%;
+        }
+        .scanner::after {
+            content: ''; position: absolute; top: 0; left: 0; width: 100%; height: 100%;
+            border: 2px solid var(--primary);
+            border-radius: 50%;
+            border-top-color: transparent;
+            animation: spin 1s linear infinite;
+            box-shadow: 0 0 15px var(--primary);
+        }
+        @keyframes spin { 100% { transform: rotate(360deg); } }
+
+        h1 {
+            font-weight: 300; letter-spacing: 4px; text-transform: uppercase;
+            margin: 0 0 15px; color: var(--primary);
+            text-shadow: 0 0 10px rgba(0, 242, 255, 0.5);
+        }
+        p { color: #8e9aaf; line-height: 1.6; font-size: 15px; margin-bottom: 25px; }
+        .status {
+            display: inline-block; padding: 6px 15px; background: rgba(0, 242, 255, 0.1);
+            border: 1px solid var(--primary); border-radius: 50px;
+            font-size: 11px; text-transform: uppercase; letter-spacing: 2px;
+            color: var(--primary); animation: pulse 2s infinite;
+        }
+        @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
     </style>
 </head>
 <body>
-<div class="spinner"></div>
-<h1>Ведутся технические работы</h1>
-<p>Мы обновляем OrionCode до последней версии. Это займет меньше минуты.</p>
+<div class="stars" id="starfield"></div>
+<div class="card">
+    <div class="inner-card">
+        <div class="scanner"></div>
+        <h1>Orion Code</h1>
+        <div class="status">Технические работы</div>
+        <p>Выполняется калибровка систем и переход на новую версию. Совсем скоро вы увидете новую версию нашего приложения.</p>
+    </div>
+</div>
+
+<script>
+    // Генерация случайных звезд
+    const field = document.getElementById('starfield');
+    for (let i = 0; i < 150; i++) {
+        const star = document.createElement('div');
+        star.className = 'star';
+        const x = Math.random() * 100;
+        const y = Math.random() * 100;
+        const size = Math.random() * 3;
+        const duration = 2 + Math.random() * 4;
+        star.style.left = x + '%';
+        star.style.top = y + '%';
+        star.style.width = size + 'px';
+        star.style.height = size + 'px';
+        star.style.setProperty('--duration', duration + 's');
+        field.appendChild(star);
+    }
+</script>
 </body>
 </html>
