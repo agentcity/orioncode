@@ -17,6 +17,7 @@
         "predis/predis": "*",
         "ramsey/uuid": "*",
         "ramsey/uuid-doctrine": "^2.1",
+        "sentry/sentry-symfony": "^5.8",
         "snc/redis-bundle": "*",
         "symfony/asset": "8.0.*",
         "symfony/asset-mapper": "8.0.*",

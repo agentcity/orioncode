@@ -19,11 +19,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
     useEffect(() => {
         const checkAuth = async () => {
+            const token = localStorage.getItem('jwt_token');
+
+            // 1. Если токена нет — даже не пытаемся стучать в дверь
+            if (!token) {
+                setUser(null);
+                setLoading(false);
+                return;
+            }
+
             try {
-                // Здесь можно сделать запрос к /api/user/me или проверить наличие JWT
-                const response = await axiosClient.get('/users/me'); // Пример эндпоинта
+                // 2. Если токен есть, подстрахуемся и пропишем его в axios ПЕРЕД запросом
+                axiosClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
+
+                const response = await axiosClient.get('/users/me');
                 setUser(response.data);
             } catch (error) {
+                console.error("Auth check failed:", error);
+                localStorage.removeItem('jwt_token'); // Чистим протухший токен
+                delete axiosClient.defaults.headers.common['Authorization'];
                 setUser(null);
             } finally {
                 setLoading(false);
@@ -40,8 +54,9 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
 
             // 2. СОХРАНЯЕМ ТОКЕН (Ключ должен совпадать с axiosClient!)
             if (response.data.token) {
+                const token = response.data.token;
                 localStorage.setItem('jwt_token', response.data.token);
-                console.log('Token saved:', response.data.token);
+                axiosClient.defaults.headers.common['Authorization'] = `Bearer ${token}`;
 
             }else {
                 console.error('No token received from backend!');
@@ -51,6 +66,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
             const userResponse = await axiosClient.get('/users/me');
             setUser(userResponse.data);
         } catch (error) {
+            delete axiosClient.defaults.headers.common['Authorization'];
             console.error('Login failed:', error);
             throw error;
         } finally {
@@ -61,6 +77,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     const logout = () => {
         localStorage.removeItem('jwt_token'); // <--- Ключ как в axiosClient!
         localStorage.removeItem('user');
+        delete axiosClient.defaults.headers.common['Authorization'];
         setUser(null);
         // Опционально: редирект, чтобы сбросить все стейты
         window.location.href = '/login';

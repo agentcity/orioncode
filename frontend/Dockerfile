@@ -16,16 +16,13 @@ ARG REACT_APP_WS_URL
 ENV REACT_APP_API_URL=$REACT_APP_API_URL
 ENV REACT_APP_WS_URL=$REACT_APP_WS_URL
 
-# 1. Собираем проект (Vite создаст папку /app/dist)
+# 1. Собираем проект (он создаст папку /app/build)
 RUN npm run build
 
-# 2. Устанавливаем сервер глобально
+# 2. Устанавливаем сервер
 RUN npm install -g serve
-
-# 3. ПРОВЕРКА: Если билд упал, докер не пойдет дальше
-RUN ls -la /app/dist
 
 EXPOSE 3000
 
-# 4. Явно указываем путь к папке с флагом -s (Single Page Application)
-ENTRYPOINT ["serve", "-s", "dist", "-l", "3000"]
+# Флаг -s (Single Page Application) ОБЯЗАТЕЛЕН
+CMD ["serve", "-s", "build", "-l", "3000"]

@@ -149,6 +149,10 @@
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/lcobucci/jwt" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/mercure-bundle" />
       <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/mercure" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/jean85/pretty-package-versions" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/sentry/sentry" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/sentry/sentry-symfony" />
+      <excludeFolder url="file://$MODULE_DIR$/backend/vendor/symfony/psr-http-message-bridge" />
     </content>
     <orderEntry type="inheritedJdk" />
     <orderEntry type="sourceFolder" forTests="false" />

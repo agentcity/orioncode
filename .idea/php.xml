@@ -158,6 +158,10 @@
       <path value="$PROJECT_DIR$/backend/vendor/lcobucci/jwt" />
       <path value="$PROJECT_DIR$/backend/vendor/symfony/mercure-bundle" />
       <path value="$PROJECT_DIR$/backend/vendor/symfony/mercure" />
+      <path value="$PROJECT_DIR$/backend/vendor/jean85/pretty-package-versions" />
+      <path value="$PROJECT_DIR$/backend/vendor/sentry/sentry" />
+      <path value="$PROJECT_DIR$/backend/vendor/sentry/sentry-symfony" />
+      <path value="$PROJECT_DIR$/backend/vendor/symfony/psr-http-message-bridge" />
     </include_path>
   </component>
   <component name="PhpProjectSharedConfiguration" php_language_level="8.2" />

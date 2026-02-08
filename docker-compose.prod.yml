@@ -35,11 +35,11 @@ services:
       APP_DEBUG: '0'
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@orion_db_prod:5432/${DB_NAME}?serverVersion=13&charset=utf8"
-      DEFAULT_URI: https://api.orioncode.ru
+      DEFAULT_URI: "api.orioncode.ru"
       REDIS_URL: "redis://orion_redis_prod:6379"
       MESSENGER_TRANSPORT_DSN: "redis://orion_redis_prod:6379/0"
-      MERCURE_URL: "https://api.orioncode.ru"
-      MERCURE_PUBLIC_URL: "https://api.orioncode.ru"
+      MERCURE_URL: "api.orioncode.ru"
+      MERCURE_PUBLIC_URL: "api.orioncode.ru"
       MERCURE_JWT_SECRET: "!qazxsw2Token" # Фейковый токен для компиляции
 
     depends_on:
@@ -69,8 +69,8 @@ services:
       target: prod
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=https://api.orioncode.ru
-        - REACT_APP_WS_URL=https://ws.orioncode.ru
+        - REACT_APP_API_URL=api.orioncode.ru
+        - REACT_APP_WS_URL=ws.orioncode.ru
     container_name: orion_frontend_prod
     restart: always
     networks:
@@ -94,10 +94,53 @@ services:
     networks:
       - app_network
 
+  # Основной веб-интерфейс - аналог Sentry
+  glitchtip:
+    image: glitchtip/glitchtip
+    container_name: orion_glitchtip
+    restart: always
+    environment: &default-env
+      - DATABASE_URL=postgres://${GL_DB_USER}:${GL_DB_PASSWORD}@orion_glitchtip_db:5432/${GL_DB_NAME}
+      - REDIS_URL=redis://orion_redis_prod:6379/1
+      - SECRET_KEY=${APP_SECRET}
+      - GLITCHTIP_DOMAIN=http://sentry.orioncode.ru # Пока без HTTPS
+      - DEFAULT_FROM_EMAIL=admin@orioncode.ru
+      - ENABLE_USER_REGISTRATION=True
+    depends_on:
+      - glitchtip_db
+      - orion_redis
+    networks:
+      - app_network
+
+  # База специально для GlitchTip
+  glitchtip_db:
+    image: postgres:15-alpine
+    container_name: orion_glitchtip_db
+    environment:
+      POSTGRES_DB: ${GL_DB_NAME}
+      POSTGRES_USER: ${GL_DB_USER}
+      POSTGRES_PASSWORD: ${GL_DB_PASSWORD}
+    volumes:
+      - glitchtip_db_data:/var/lib/postgresql/data
+    networks:
+      - app_network
+
+  # Воркер — он "переваривает" приходящие ошибки от Sentry
+  worker:
+    image: glitchtip/glitchtip
+    container_name: orion_glitchtip_worker
+    command: ./bin/run-celery-with-beat.sh
+    restart: always
+    environment: *default-env
+    depends_on:
+      - glitchtip
+    networks:
+      - app_network
+
 networks:
   app_network:
     driver: bridge
 
 volumes:
   orion_db_data:
-
+  glitchtip_db_data:

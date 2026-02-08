@@ -186,8 +186,51 @@ prod-check-maintenance: ## Имитация работ на проде
 prod-status: ## Проверить статус контейнеров и ресурсы на Jino
 	@ssh $(SSH_HOST) "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}' && echo '' && docker stats --no-stream"
 
+# ТОТАЛЬНЫЙ МОНИТОРИНГ ПРОДА
+prod-status-total: ## Показать полный статус систем (Docker, RAM, Redis, WS)
+	@echo "🚀 --- ORIONCODE SYSTEMS STATUS --- 🚀"
+	@echo "📅 Время: $$(date)"
+	@echo ""
+	@echo "📦 [DOCKER CONTAINERS]"
+	@ssh $(SSH_HOST) "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+	@echo ""
+	@echo "💾 [RESOURCES / MEMORY]"
+	@ssh $(SSH_HOST) "docker stats --no-stream --format 'table {{.Name}}\t{{.CPUPerc}}\t{{.MemUsage}}'"
+	@echo ""
+	@echo "🔑 [REDIS STATS]"
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli dbsize | sed 's/^/Ключей в базе: /'"
+	@echo ""
+	@echo "📡 [WEBSOCKET / API PORTS]"
+	@ssh $(SSH_HOST) "echo 'API (80/443): ' && curl -s -I http://api.orioncode.ru | grep HTTP"
+	@ssh $(SSH_HOST) "echo 'WS (3000-internal): ' && docker exec orion_websocket_prod netstat -tulpn | grep :3000 || echo 'OFFLINE'"
+	@echo ""
+	@echo "💻 [FRONTEND CHECK]"
+	@echo -n "Status: app.orioncode.ru" && curl -s -o /dev/null -w "%{http_code}" app.orioncode.ru || echo "❌ CONNECTION_FAILED"
+	@echo -n "\nJS Engine: " && ssh $(SSH_HOST) "docker exec orion_frontend_prod sh -c 'ls build/static/js/main.*.js >/dev/null 2>&1 && echo ✅_READY || echo ❌_EMPTY_BUILD'"
+	@echo -n "Build Size: " && ssh $(SSH_HOST) "docker exec orion_frontend_prod du -sh build | awk '{print \$$1}'"
+	@echo "\n⚙️ [BACKEND: SYMFONY ENGINE]"
+	@echo -n "API Status: api.orioncode.ru" && curl -s -o /dev/null -w "%{http_code}" api.orioncode.ru || echo "❌ CONNECTION_FAILED"
+	@echo -n "\nPHP-FPM Health: " && ssh $(SSH_HOST) "docker exec orion_backend_prod php-fpm -t 2>&1 | grep 'test is successful' >/dev/null && echo '✅ OK' || echo '❌ FAILED'"
+	@echo -n "\nDatabase: " && ssh $(SSH_HOST) "docker exec orion_backend_prod php bin/console dbal:run-sql 'SELECT 1' --env=prod >/dev/null 2>&1 && echo ✅_CONNECTED || echo ❌_DB_ERROR"
+	@echo "📜 [LAST BACKEND ERRORS]"
+	@ssh $(SSH_HOST) "docker logs --tail 5 orion_backend_prod"
+	@echo "---------------------------------------"
+
 prod-logs: ## Логи бэкенда на Jino
 	ssh $(SSH_HOST) "docker logs -f orion_backend_prod"
+
+# Потоковое чтение логов Symfony прямо с прода
+prod-logs-tail: ## Показать последние логи бэкенда на Jino
+	@echo "📡 Подключаюсь к логам Symfony на проде..."
+	@ssh $(SSH_HOST) "docker logs --tail 20 orion_backend_prod"
+
+# Команда для поиска конкретных PHP ошибок
+prod-find-errors: ## Найти последние критические ошибки в логах
+	@echo "🔍 Ищу критические ошибки (CRITICAL/ERROR)..."
+	@ssh $(SSH_HOST) "docker logs orion_backend_prod 2>&1 | tail -n 20"
+
+prod-logs-messenger: ## Логи бэкенда на Jino
+	ssh $(SSH_HOST) "docker exec orion_backend_prod php bin/console messenger:consume async -vv"
 
 prod-nginx-logs-50: ## Логи бэкенда на Jino
 	ssh $(SSH_HOST) "docker logs orion_nginx_prod --tail 50"
@@ -239,13 +282,32 @@ prod-ws-restart:
 prod-redis-sub:
 	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli SUBSCRIBE chat_messages"
 
-# Мониторинг всех команд Redis на проде
-prod-redis-monitor:
-	ssh -t $(SSH_HOST) "docker exec orion_redis_prod redis-cli monitor"
+# Мониторинг в реальном времени (видишь каждый приходящий запрос)
+prod-redis-monitor: ## Следить за всеми операциями в Redis (LIVE)
+	@echo "👀 Режим мониторинга (Ctrl+C для выхода)..."
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli monitor"
 
 # Если хочешь именно зайти внутрь (интерактивно), используй -t у SSH:
 prod-db-shell:
 	ssh -t $(SSH_HOST) "docker exec -it orion_db_prod psql -U $(DB_USER) -d $(DB_NAME)"
+
+# Проверка: жив ли Redis и сколько в нем ключей
+prod-redis-info: ## Показать общую статистику Redis на проде
+	@echo "📊 Статистика Redis на Jino..."
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli info memory | grep used_memory_human"
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli dbsize | sed 's/^/Ключей в базе: /'"
+
+
+# Список всех ключей (полезно, если чат "завис")
+prod-redis-keys: ## Список всех ключей в базе Redis
+	@echo "🔑 Список ключей в Redis:"
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli keys '*'"
+
+# Очистка Redis (использовать осторожно!)
+prod-redis-flush: ## ПОЛНАЯ ОЧИСТКА Redis на проде
+	@echo "⚠️  ВНИМАНИЕ: Очистка всех данных в Redis..."
+	@ssh $(SSH_HOST) "docker exec orion_redis_prod redis-cli flushall"
+
 
 # --- РАБОТА С БАЗОЙ ДАННЫХ (СЖАТИЕ GZIP) ---
 
