@@ -77,7 +77,7 @@ services:
       dockerfile: Dockerfile
       args:
         - REACT_APP_API_URL=https://api.orioncode.ru
-        - REACT_APP_WS_URL=https://ws.orioncode.ru
+        - REACT_APP_WS_URL=ws.orioncode.ru
     container_name: orion_frontend_prod
     restart: always
     networks:
