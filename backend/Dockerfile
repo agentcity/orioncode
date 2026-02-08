@@ -71,8 +71,12 @@ ENV APP_ENV=prod APP_DEBUG=0
 RUN php bin/console cache:clear --no-warmup --no-interaction --env=prod \
  && php bin/console cache:warmup --no-interaction --env=prod || true
 
+RUN mkdir -p public/uploads \
+    && chown -R www-data:www-data public/uploads \
+    && chmod -R 775 public/uploads
+
 # права и т.д.
-RUN chown -R www-data:www-data var/ vendor/ || true
+RUN chown -R www-data:www-data var/ vendor/  || true
 
 
 EXPOSE 9000

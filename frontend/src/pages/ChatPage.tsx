@@ -16,6 +16,7 @@ import axiosClient from '../api/axiosClient';
 import { Conversation, Message } from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { useAuth } from '../context/AuthContext';
+import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
 
 const StyledBadge = styled(Badge, {
     shouldForwardProp: (prop) => prop !== 'isOnline',
@@ -48,6 +49,9 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
     // Состояние для полноэкранного просмотра фото
     const [selectedImage, setSelectedImage] = useState<string | null>(null);
+
+    // Состояние для ошибок загрузки фото
+    const [imageErrors, setImageErrors] = useState<Record<string, boolean>>({});
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -228,6 +232,9 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                         ? (String(msg.payload?.senderId).toLowerCase() === String(currentUser?.id).toLowerCase())
                         : (msg.direction === 'outbound' || msg.direction === 'outgoing');
 
+                    // Проверяем, помечена ли эта картинка как "битая"
+                    const hasError = imageErrors[msg.id] || false;
+
                     return (
                         <Box key={msg.id} sx={{ display: 'flex', flexDirection: 'column', alignItems: isMine ? 'flex-end' : 'flex-start', mb: 2 }}>
                             <Paper elevation={2} sx={{
@@ -240,17 +247,37 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                                 {imageSrc && (
                                     <Box
                                         sx={{ position: 'relative', lineHeight: 0, cursor: 'pointer' }}
-                                        onClick={() => !msg.isUploading && setSelectedImage(imageSrc)}
+                                        onClick={() => !msg.isUploading && !hasError  && setSelectedImage(imageSrc)}
                                     >
+                                        {hasError ? (
+                                            // КРАСИВАЯ ЗАГЛУШКА
+                                            <Box sx={{
+                                                width: '200px', height: '150px',
+                                                bgcolor: 'rgba(0,0,0,0.05)', borderRadius: '12px',
+                                                display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center',
+                                                border: '1px dashed rgba(0,0,0,0.2)'
+                                            }}>
+                                                <ImageNotSupportedIcon sx={{ fontSize: 40, opacity: 0.3, mb: 1 }} />
+                                                <Typography variant="caption" sx={{ opacity: 0.5 }}>Фото недоступно</Typography>
+                                            </Box>
+                                        ) : (
                                         <img
                                             src={imageSrc}
                                             alt="attachment"
+                                            onError={() => {
+                                                // Мы говорим: "Для сообщения с этим ID картинка битая"
+                                                setImageErrors(prev => ({
+                                                    ...prev,
+                                                    [msg.id]: true
+                                                }));
+                                            }}
                                             style={{
                                                 width: '100%', maxWidth: '300px', maxHeight: '400px',
                                                 objectFit: 'cover', borderRadius: '12px',
                                                 filter: msg.isUploading ? 'blur(4px) grayscale(50%)' : 'none'
                                             }}
                                         />
+                                        )}
                                         {msg.isUploading && (
                                             <Box sx={{ position: 'absolute', top: '50%', left: '50%', transform: 'translate(-50%, -50%)' }}>
                                                 <CircularProgress size={24} color="inherit" />

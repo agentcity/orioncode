@@ -11,7 +11,7 @@ BASE_DIR = /var/www/orioncode
 RELEASE_NAME = $(shell date +%Y.%m.%d-%H.%M.%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
 CURRENT_DIR = $(BASE_DIR)/current
-RSYNC_EXCLUDE = --exclude='.git' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env'
+RSYNC_EXCLUDE = --exclude='.git' --exclude='.idea' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env' --exclude='backend/public/uploads'
 DC_PROD = docker compose -p orion_prod
 DC_DEV = docker-compose
 DC_PROD_CMD = docker compose -p orion_prod -f docker-compose.prod.yml
@@ -123,7 +123,7 @@ deploy:
 
 	@echo "🔗 Настройка связей (shared .env)..."
 	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
-	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/upload $(RELEASE_DIR)/backend/public/upload"
+	#ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/uploads $(RELEASE_DIR)/backend/public/uploads"
 
 
 	@echo "🏗️ Сборка Docker на сервере..."

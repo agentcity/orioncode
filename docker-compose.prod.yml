@@ -37,13 +37,18 @@ services:
       APP_DEBUG: '0'
       APP_SECRET: ${APP_SECRET}
       DATABASE_URL: "postgresql://${DB_USER}:${DB_PASSWORD}@orion_db_prod:5432/${DB_NAME}?serverVersion=13&charset=utf8"
-      DEFAULT_URI: "api.orioncode.ru"
+      DEFAULT_URI: "https://api.orioncode.ru"
       REDIS_URL: "redis://orion_redis_prod:6379"
       MESSENGER_TRANSPORT_DSN: "redis://orion_redis_prod:6379/0"
-      MERCURE_URL: "api.orioncode.ru"
-      MERCURE_PUBLIC_URL: "api.orioncode.ru"
+      MERCURE_URL: "https://api.orioncode.ru"
+      MERCURE_PUBLIC_URL: "https://api.orioncode.ru"
       MERCURE_JWT_SECRET: "!qazxsw2Token" # Фейковый токен для компиляции
-
+    volumes:
+      - ./backend:/srv/backend
+      - /srv/backend/vendor
+      - /srv/backend/public/uploads
+      - ./.env:/srv/backend/.env
+      - /var/www/orioncode/shared/uploads:/srv/backend/public/uploads
     depends_on:
       - orion_db
       - orion_redis
@@ -71,8 +76,8 @@ services:
       target: prod
       dockerfile: Dockerfile
       args:
-        - REACT_APP_API_URL=api.orioncode.ru
-        - REACT_APP_WS_URL=ws.orioncode.ru
+        - REACT_APP_API_URL=https://api.orioncode.ru
+        - REACT_APP_WS_URL=https://ws.orioncode.ru
     container_name: orion_frontend_prod
     restart: always
     networks:
@@ -90,7 +95,7 @@ services:
       - ./nginx/prod.conf:/etc/nginx/conf.d/default.conf:ro
       - ./backend:/srv/backend:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
-      - /var/www/orioncode/current/backend/public:/srv/backend/public:ro
+      - /var/www/orioncode/shared/uploads:/srv/backend/public/uploads:ro
 
     depends_on:
       - orion_backend

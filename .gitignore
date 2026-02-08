@@ -2,6 +2,8 @@
 .vscode/
 .env
 .env.local
+.DS_Store
+**/ .DS_Store
 backend/.env.local
 backend/.env.local.php
 backend/.env.*.local
