@@ -5,8 +5,7 @@ const config: CapacitorConfig = {
   appName: 'Orion',
   webDir: 'build'
   server: {
-    // Укажи локальный IP твоего компьютера, чтобы телефон видел бэкенд
-    url: 'http://192.168.1.13:3001',
+    url: 'https://app.orioncode.ru',
     cleartext: true
   }
   plugins: {

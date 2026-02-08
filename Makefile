@@ -127,6 +127,9 @@ deploy:
 	@echo "🏗️ Сборка Docker на сервере..."
 	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build"
 
+	@echo "🧹 Очистка старых образов и кэша..."
+	@ssh $(SSH_HOST) "docker image prune -f"
+
 	@echo "🔄 Переключение симлинка..."
 	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
 
