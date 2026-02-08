@@ -43,8 +43,6 @@ services:
       MERCURE_URL: "api.orioncode.ru"
       MERCURE_PUBLIC_URL: "api.orioncode.ru"
       MERCURE_JWT_SECRET: "!qazxsw2Token" # Фейковый токен для компиляции
-    volumes:
-      - /var/www/orioncode/shared/uploads:/srv/backend/public/uploads
 
     depends_on:
       - orion_db
@@ -93,7 +91,6 @@ services:
       - ./backend:/srv/backend:ro
       - /etc/letsencrypt:/etc/letsencrypt:ro
       - /var/www/orioncode/current/backend/public:/srv/backend/public:ro
-      - /var/www/orioncode/shared/uploads:/srv/backend/public/uploads
 
     depends_on:
       - orion_backend
