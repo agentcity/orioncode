@@ -123,14 +123,9 @@ deploy:
 
 	@echo "🔗 Настройка связей (shared .env)..."
 	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
-	#ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/uploads $(RELEASE_DIR)/backend/public/uploads"
-
 
 	@echo "🏗️ Сборка Docker на сервере..."
-	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build"
-
-	@echo "🧹 Очистка старых образов и кэша..."
-	@ssh $(SSH_HOST) "docker image prune -f"
+	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build orion_backend orion_frontend"
 
 	@echo "🔄 Переключение симлинка..."
 	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
@@ -142,6 +137,16 @@ deploy:
 	@echo "🧹 Удаление старых релизов (оставляем последние 3)..."
 	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
 	@echo "✅ Деплой завершен: https://app.orioncode.ru"
+
+# Полный деплой (если менял БД, Redis или Nginx)
+deploy-full: deploy
+	@echo "🏗️ Перезапуск инфраструктуры..."
+	@echo "🧹 Очистка старых образов и кэша..."
+	@ssh $(SSH_HOST) "docker image prune -f"
+	@echo "🏗️ Сборка Docker на сервере..."
+	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build"
+
+
 
 deploy-rollback:
 	@echo "⏪ Откат на предыдущий релиз..."

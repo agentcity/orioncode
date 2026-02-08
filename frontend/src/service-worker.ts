@@ -1,20 +1,66 @@
 /* eslint-disable no-restricted-globals */
 import { precacheAndRoute } from 'workbox-precaching';
 import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate, CacheFirst } from 'workbox-strategies';
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from 'workbox-strategies';
+import { ExpirationPlugin } from 'workbox-expiration';
+import { BackgroundSyncPlugin } from 'workbox-background-sync';
+
+declare const self: ServiceWorkerGlobalScope;
 
 const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
-// Кэшируем билд (JS/CSS)
-precacheAndRoute((self as any).__WB_MANIFEST);
 
-// Кэшируем картинки/шрифты (живут долго)
+// 1. Предварительный кэш билда (то, что генерирует webpack)
+precacheAndRoute(self.__WB_MANIFEST);
+
+
+// 2. Кэшируем картинки и шрифты (Cache First)
+// Они не меняются, поэтому берем из кэша, экономя трафик
 registerRoute(
     ({ request }) => request.destination === 'image' || request.destination === 'font',
-    new CacheFirst({ cacheName: 'assets' })
+    new CacheFirst({
+        cacheName: 'assets-cache',
+        plugins: [
+            new ExpirationPlugin({
+                maxEntries: 100, // Храним до 100 картинок
+                maxAgeSeconds: 30 * 24 * 60 * 60, // 30 дней
+            }),
+        ],
+    })
 );
 
-// Кэшируем API запросы (показываем старое, пока грузится новое)
+// 3. Кэшируем API запросы (Stale While Revalidate)
+// Сначала показываем старое из кэша, в фоне обновляем из сети
 registerRoute(
-    ({ url }) => url.origin === serverBase,
-    new StaleWhileRevalidate({ cacheName: 'api-cache' })
+    ({ url }) => url.origin === serverBase || url.host === 'api.orioncode.ru',
+    new StaleWhileRevalidate({
+        cacheName: 'api-cache',
+        plugins: [
+            new ExpirationPlugin({
+                maxEntries: 50,
+                maxAgeSeconds: 24 * 60 * 60, // Храним данные 24 часа
+            }),
+        ],
+    })
 );
+
+// 4. Фоновая синхронизация для отправки сообщений
+// Если интернет пропал в момент отправки — сообщение уйдет само, когда сеть появится
+const bgSyncPlugin = new BackgroundSyncPlugin('retry-queue', {
+    maxRetentionTime: 24 * 60, // Пробовать отправить в течение 24 часов
+});
+
+// Регулярное выражение поймает /api/conversations/<UUID>/messages
+registerRoute(
+    ({ url }) => url.pathname.match(/\/api\/conversations\/[\w-]+\/messages/),
+    new NetworkOnly({
+        plugins: [bgSyncPlugin],
+    }),
+    'POST'
+);
+
+// Позволяет новому воркеру сразу брать управление (для быстрого обновления)
+self.addEventListener('message', (event) => {
+    if (event.data && event.data.type === 'SKIP_WAITING') {
+        self.skipWaiting();
+    }
+});
