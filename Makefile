@@ -123,6 +123,8 @@ deploy:
 
 	@echo "🔗 Настройка связей (shared .env)..."
 	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
+	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/upload $(RELEASE_DIR)/backend/public/upload"
+
 
 	@echo "🏗️ Сборка Docker на сервере..."
 	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build"

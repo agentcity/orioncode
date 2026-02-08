@@ -15,4 +15,5 @@ backend/public/bundles/
 backend/.phpunit.result.cache
 backend/.php-cs-fixer.cache
 backend/var/log/
-backups/ssh orion@81.200.158.70 "docker restart orion_backend_prod"
+backend/public/uploads
+backups/

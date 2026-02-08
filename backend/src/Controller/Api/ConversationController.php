@@ -133,16 +133,15 @@ class ConversationController extends AbstractController
             $conversation->setTargetUser($targetUser);
 
             // КРИТИЧЕСКИЙ МОМЕНТ: Поле Account
-            // Если у пользователя нет аккаунта, берем первый попавшийся из базы для теста
-            if (method_exists($currentUser, 'getAccount') && $currentUser->getAccount()) {
-                $conversation->setAccount($currentUser->getAccount());
-            } else {
-                // Если аккаунт не найден у юзера, пробуем найти хоть какой-то в системе
-                $account = $em->getRepository(\App\Entity\Account::class)->findOneBy([]);
-                if ($account) {
-                    $conversation->setAccount($account);
+            // Если аккаунт есть — ставим, если нет — идем дальше.
+            if (method_exists($conversation, 'setAccount')) {
+                if (method_exists($currentUser, 'getAccount') && $currentUser->getAccount()) {
+                    $conversation->setAccount($currentUser->getAccount());
                 } else {
-                    throw new \Exception("В базе данных нет ни одного Account. Создайте его!");
+                    $account = $em->getRepository(\App\Entity\Account::class)->findOneBy([]);
+                    if ($account) {
+                        $conversation->setAccount($account);
+                    }
                 }
             }
 

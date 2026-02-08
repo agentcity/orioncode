@@ -33,7 +33,7 @@ class Conversation
     private $id = null;
 
     #[ORM\ManyToOne]
-    #[ORM\JoinColumn(nullable: false)]
+    #[ORM\JoinColumn(nullable: true)]
     private ?Account $account = null;
 
     #[ORM\Column(length: 255, nullable: true)]
