@@ -80,7 +80,7 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
         delete axiosClient.defaults.headers.common['Authorization'];
         setUser(null);
         // Опционально: редирект, чтобы сбросить все стейты
-        window.location.href = '/login';
+        window.location.href = '/';
     };
 
     return (

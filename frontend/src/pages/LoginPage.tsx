@@ -1,8 +1,18 @@
-// src/pages/LoginPage.tsx
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
 import { useNavigate } from 'react-router-dom';
-import { TextField, Button, Box, Typography, Alert } from '@mui/material';
+import {
+    TextField, Button, Box, Typography, Alert,
+    Paper, Container, Fade, keyframes
+} from '@mui/material';
+import { AutoAwesome } from '@mui/icons-material';
+import LoadingScreen from '../components/LoadingScreen';
+
+const pulse = keyframes`
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.05); opacity: 0.8; }
+  100% { transform: scale(1); opacity: 1; }
+`;
 
 const LoginPage: React.FC = () => {
     const [email, setEmail] = useState('');
@@ -22,45 +32,94 @@ const LoginPage: React.FC = () => {
         setError(null);
         try {
             await login(email, password);
-            // navigate('/dashboard') будет вызван в useEffect
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Login failed. Please check your credentials.');
+            setError(err.response?.data?.message || 'Ошибка входа. Проверьте данные.');
         }
     };
 
     if (loading) {
-        return <Typography>Loading...</Typography>; // Или спиннер
+        return <LoadingScreen />;
     }
 
     return (
-        <Box sx={{ maxWidth: 400, margin: 'auto', mt: 8, p: 3, boxShadow: 3, borderRadius: 2 }}>
-            <Typography variant="h4" component="h1" gutterBottom align="center">
-                Login
-            </Typography>
-            {error && <Alert severity="error" sx={{ mb: 2 }}>{error}</Alert>}
-            <form onSubmit={handleSubmit}>
-                <TextField
-                    label="Email"
-                    type="email"
-                    fullWidth
-                    margin="normal"
-                    value={email}
-                    onChange={(e) => setEmail(e.target.value)}
-                    required
-                />
-                <TextField
-                    label="Password"
-                    type="password"
-                    fullWidth
-                    margin="normal"
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    required
-                />
-                <Button type="submit" variant="contained" fullWidth sx={{ mt: 3 }} disabled={loading}>
-                    {loading ? 'Logging in...' : 'Login'}
-                </Button>
-            </form>
+        <Box sx={{
+            minHeight: '100vh',
+            display: 'flex',
+            alignItems: 'center',
+            bgcolor: '#f4f7f6', // Тот же фон, что у загрузчика
+            backgroundImage: `url("data:image/svg+xml,%3Csvg width='60' height='60' viewBox='0 0 60 60' xmlns='http://www.w3.org fill='none' fill-rule='evenodd'%3E%3Cg fill='%231976d2' fill-opacity='0.03'%3E%3Cpath d='M36 34v-4h-2v4h-4v2h4v4h2v-4h4v-2h-4zm0-30V0h-2v4h-4v2h4v4h2V6h4V4h-4zM6 34v-4H4v4H0v2h4v4h2v-4h4v-2H6zM6 4V0H4v4H0v2h4v4h2V6h4V4H6z'/%3E%3C/g%3E%3C/g%3E%3C/svg%3E")`
+        }}>
+            <Container maxWidth="xs">
+                <Fade in={true} timeout={800}>
+                    <Paper elevation={0} sx={{
+                        p: 4,
+                        borderRadius: 4,
+                        textAlign: 'center',
+                        border: '1px solid rgba(25, 118, 210, 0.12)',
+                        boxShadow: '0 8px 32px rgba(0,0,0,0.05)'
+                    }}>
+                        {/* Логотип как в LoadingScreen */}
+                        <Box sx={{ animation: `${pulse} 3s infinite ease-in-out`, mb: 2 }}>
+                            <AutoAwesome sx={{ fontSize: 48, color: '#1976d2' }} />
+                        </Box>
+
+                        <Typography variant="h4" sx={{ fontWeight: 700, mb: 1, color: '#1976d2' }}>
+                            ORION
+                        </Typography>
+                        <Typography variant="body2" sx={{ mb: 4, color: 'text.secondary' }}>
+                            Войдите, чтобы продолжить
+                        </Typography>
+
+                        {error && (
+                            <Alert severity="error" sx={{ mb: 3, borderRadius: 2 }}>
+                                {error}
+                            </Alert>
+                        )}
+
+                        <Box component="form" onSubmit={handleSubmit} noValidate>
+                            <TextField
+                                label="Email"
+                                type="email"
+                                fullWidth
+                                variant="outlined"
+                                margin="normal"
+                                value={email}
+                                onChange={(e) => setEmail(e.target.value)}
+                                required
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                            />
+                            <TextField
+                                label="Пароль"
+                                type="password"
+                                fullWidth
+                                variant="outlined"
+                                margin="normal"
+                                value={password}
+                                onChange={(e) => setPassword(e.target.value)}
+                                required
+                                sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
+                            />
+                            <Button
+                                type="submit"
+                                variant="contained"
+                                fullWidth
+                                size="large"
+                                sx={{
+                                    mt: 4,
+                                    py: 1.5,
+                                    borderRadius: 3,
+                                    fontWeight: 600,
+                                    textTransform: 'none',
+                                    fontSize: '1rem',
+                                    boxShadow: '0 4px 12px rgba(25, 118, 210, 0.3)'
+                                }}
+                            >
+                                Войти
+                            </Button>
+                        </Box>
+                    </Paper>
+                </Fade>
+            </Container>
         </Box>
     );
 };

@@ -5,6 +5,7 @@ import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
 import OfflineStub from './components/OfflineStub';
 import axiosClient from './api/axiosClient';
+import LoadingScreen from './components/LoadingScreen';
 import { CircularProgress, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
 const theme = createTheme({
@@ -17,15 +18,12 @@ const theme = createTheme({
 
 const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => {
     const { isAuthenticated, loading } = useAuth();
-    if (loading) return (
-        <Box sx={{ display: 'flex', justifyContent: 'center', alignItems: 'center', height: '100vh' }}>
-            <CircularProgress />
-        </Box>
-    );
+    if (loading) return <LoadingScreen />;
     return isAuthenticated ? <>{children}</> : <Navigate to="/login" />;
 };
 
-const App: React.FC = () => {
+const AppContent: React.FC = () => {
+    const { isAuthenticated, loading } = useAuth();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isServerAvailable, setIsServerAvailable] = useState(true);
 
@@ -72,26 +70,43 @@ const App: React.FC = () => {
         window.location.reload();
     };
 
-    // Если нет интернета или сервер недоступен — показываем заглушку
+    if (loading) {
+        return <LoadingScreen />;
+    }
+
+    // Если нет сети — заглушка
     if (!isOnline || !isServerAvailable) {
         return (
-            <ThemeProvider theme={theme}>
-                <CssBaseline />
-                <OfflineStub onRetry={handleRetry} />
-            </ThemeProvider>
+            <Box sx={{ height: '100vh' }}>
+                <OfflineStub onRetry={() => window.location.reload()} />
+            </Box>
         );
     }
 
+    return (
+        <Routes>
+            {/* Если залогинен и лезем на /login — кидаем в дашборд */}
+            <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
+
+            {/* Защищенный роут */}
+            <Route path="/dashboard/*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
+
+            {/* Корень: решаем куда отправить на основе авторизации */}
+            <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
+
+            {/* Если зашли на несуществующий путь */}
+            <Route path="*" element={<Navigate to="/" />} />
+        </Routes>
+    );
+};
+
+const App: React.FC = () => {
     return (
         <ThemeProvider theme={theme}>
             <CssBaseline />
             <Router>
                 <AuthProvider>
-                    <Routes>
-                        <Route path="/login" element={<LoginPage />} />
-                        <Route path="/dashboard/*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-                        <Route path="/" element={<Navigate to="/dashboard" />} />
-                    </Routes>
+                    <AppContent />
                 </AuthProvider>
             </Router>
         </ThemeProvider>

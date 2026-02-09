@@ -6,7 +6,16 @@ import reportWebVitals from './reportWebVitals';
 
 if (process.env.NODE_ENV === 'production' && 'serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-        navigator.serviceWorker.register('/service-worker.js');
+        // Очистка старых регистраций перед новой
+        navigator.serviceWorker.getRegistrations().then((registrations) => {
+            for (let registration of registrations) {
+                registration.unregister();
+            }
+        });
+
+        navigator.serviceWorker.register('/service-worker.js')
+            .then(reg => console.log('SW registered'))
+            .catch(err => console.log('SW error:', err));
     });
 }
 

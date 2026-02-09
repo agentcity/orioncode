@@ -11,7 +11,7 @@ BASE_DIR = /var/www/orioncode
 RELEASE_NAME = $(shell date +%Y.%m.%d-%H.%M.%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
 CURRENT_DIR = $(BASE_DIR)/current
-RSYNC_EXCLUDE = --exclude='.git' --exclude='.idea' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env' --exclude='backend/public/uploads'
+RSYNC_EXCLUDE = --exclude='.git' --exclude='.idea' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env' --exclude='backend/public/uploads' --exclude='frontend/mobile'
 DC_PROD = docker compose -p orion_prod
 DC_DEV = docker-compose
 DC_PROD_CMD = docker compose -p orion_prod -f docker-compose.prod.yml
@@ -114,6 +114,8 @@ test-all: ## Запустить ВСЕ тесты (Бэк + Фронт)
 
 # --- ПРОДАКШЕН (JINO) ---
 
+SERVICES ?= orion_backend orion_frontend orion_nginx orion_websocket orion_redis
+
 deploy:
 	@echo "📦 Создание релиза $(RELEASE_NAME)..."
 	ssh $(SSH_HOST) "mkdir -p $(RELEASE_DIR)"
@@ -125,26 +127,41 @@ deploy:
 	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
 
 	@echo "🏗️ Сборка Docker на сервере..."
-	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build orion_backend orion_frontend"
+	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build $(SERVICES)"
 
 	@echo "🔄 Переключение симлинка..."
 	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
 
 	@echo "🐘 Миграции и кэш..."
-	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console doctrine:migrations:migrate --no-interaction"
-	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console cache:clear"
-
+	@if echo "$(SERVICES)" | grep -q "backend"; then \
+		ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console doctrine:migrations:migrate --no-interaction"; \
+		ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console cache:clear"; \
+	fi
 	@echo "🧹 Удаление старых релизов (оставляем последние 3)..."
-	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs rm -rf"
+	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs -I {} docker run --rm -v $(BASE_DIR)/releases:/cleanup alpine rm -rf /cleanup/{}"
 	@echo "✅ Деплой завершен: https://app.orioncode.ru"
 
 # Полный деплой (если менял БД, Redis или Nginx)
-deploy-full: deploy
+deploy-full:
+	@echo "📦 Создание релиза $(RELEASE_NAME)..."
+	ssh $(SSH_HOST) "mkdir -p $(RELEASE_DIR)"
+	@echo "🚀 Загрузка кода..."
+	rsync -avz $(RSYNC_EXCLUDE) ./ $(SSH_HOST):$(RELEASE_DIR)
+	@echo "🔗 Настройка связей (shared .env)..."
+	ssh $(SSH_HOST) "ln -sfn $(BASE_DIR)/shared/.env $(RELEASE_DIR)/.env"
 	@echo "🏗️ Перезапуск инфраструктуры..."
 	@echo "🧹 Очистка старых образов и кэша..."
 	@ssh $(SSH_HOST) "docker image prune -f"
 	@echo "🏗️ Сборка Docker на сервере..."
 	ssh $(SSH_HOST) "cd $(RELEASE_DIR) && docker compose -f docker-compose.prod.yml up -d --build"
+	@echo "🔄 Переключение симлинка..."
+	ssh $(SSH_HOST) "ln -sfn $(RELEASE_DIR) $(CURRENT_DIR)"
+	@echo "🐘 Миграции и кэш..."
+	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console doctrine:migrations:migrate --no-interaction"
+	ssh $(SSH_HOST) "docker exec -t -e APP_ENV=prod orion_backend_prod php bin/console cache:clear"
+	@echo "🧹 Удаление старых релизов (оставляем последние 3)..."
+	ssh $(SSH_HOST) "cd $(BASE_DIR)/releases && ls -1t | tail -n +4 | xargs -I {} docker run --rm -v $(BASE_DIR)/releases:/cleanup alpine rm -rf /cleanup/{}"
+	@echo "✅ Деплой завершен: https://app.orioncode.ru"
 
 
 
