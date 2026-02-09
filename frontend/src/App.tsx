@@ -6,7 +6,10 @@ import DashboardPage from './pages/DashboardPage';
 import OfflineStub from './components/OfflineStub';
 import axiosClient from './api/axiosClient';
 import LoadingScreen from './components/LoadingScreen';
+import { LocalNotifications } from '@capacitor/local-notifications';
 import { CircularProgress, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+
+
 
 const theme = createTheme({
     palette: {
@@ -28,6 +31,31 @@ const AppContent: React.FC = () => {
     const [isServerAvailable, setIsServerAvailable] = useState(true);
 
     useEffect(() => {
+        const requestPushPermission = async () => {
+            // Проверяем, на мобилке мы или в браузере
+            if (navigator.userAgent.includes('Android')) {
+                const status = await LocalNotifications.requestPermissions();
+                console.log('Permission status:', status);
+            } else if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        };
+
+        requestPushPermission();
+    }, []);
+
+    useEffect(() => {
+        // 1. Проверяем наличие объекта Notification в глобальной области видимости
+        if (typeof window !== 'undefined' && 'Notification' in window) {
+            Notification.requestPermission().catch((err) =>
+                console.warn("Уведомления заблокированы или ошибка:", err)
+            );
+        } else {
+            console.log("Этот браузер не поддерживает системные уведомления");
+        }
+    }, []);
+
+    useEffect(() => {
         if ('serviceWorker' in navigator) {
             navigator.serviceWorker.addEventListener('controllerchange', () => {
                 // Когда воркер обновился — перезагружаем страницу
@@ -36,10 +64,6 @@ const AppContent: React.FC = () => {
         }
     }, []);
 
-    // Запрос разрешения на уведомления
-    useEffect(() => {
-        Notification.requestPermission();
-    }, []);
 
     useEffect(() => {
         // 1. Мониторинг интернета на самом устройстве

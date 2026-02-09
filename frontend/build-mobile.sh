@@ -23,13 +23,21 @@ cd ..
 
 # 2. Синхронизация кода с нативными платформами
 echo -e "${GREEN}2. Синхронизация с Capacitor...${NC}"
-npx cap copy
+npx cap copy android --project mobile/android
+npx cap copy ios --project mobile/ios
+
+# АНДРОИД: Копируем билд в папку ресурсов Android
+mkdir -p mobile/android/app/src/main/assets/public
+rm -rf mobile/android/app/src/main/assets/public/*
+cp -R build/* mobile/android/app/src/main/assets/public/
+
 
 echo -e "${GREEN}Подготовка файлов для Electron...${NC}"
 mkdir -p mobile/electron/app # Создаем папку, если её нет
 cp -R build/* mobile/electron/app/ # Копируем твой React-билд внутрь Электрона
 
-npx cap sync
+npx cap sync android
+npx cap sync ios
 
 # 3. Сборка Android (Генерация APK/Bundle)
 if [ -d "mobile/android" ]; then

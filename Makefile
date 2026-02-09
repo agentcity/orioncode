@@ -49,7 +49,8 @@ logs-ws:
 restart:
 	$(DC) restart
 
-
+restart-fr:
+	$(DC) restart $(FRONT)
 
 # --- РАЗРАБОТКА  ---
 dev-up: ## Запустить локальную версию (dev)
