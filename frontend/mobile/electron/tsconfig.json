@@ -2,6 +2,9 @@
   "compileOnSave": true,
   "include": ["./src/**/*", "./capacitor.config.ts", "./capacitor.config.js"],
   "compilerOptions": {
+    "skipLibCheck": true,
+    "strict": false,
+    "noImplicitAny": false,
     "outDir": "./build",
     "importHelpers": true,
     "target": "ES2017",

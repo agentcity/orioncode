@@ -1,6 +1,4 @@
-import type { CapacitorConfig } from '@capacitor/cli';
-
-const config: CapacitorConfig = {
+{
   "appId": "app.orioncode.ru",
   "appName": "Orion",
   "webDir": "build",
@@ -8,6 +6,15 @@ const config: CapacitorConfig = {
     "url": "https://app.orioncode.ru",
     "cleartext": true,
     "allowNavigation": ["api.orioncode.ru", "ws.orioncode.ru"]
+  },
+  "android": {
+    "path": "mobile/android"
+  },
+  "ios": {
+    "path": "mobile/ios"
+  },
+  "electron": {
+    "path": "mobile/electron"
   },
   "plugins": {
     "SplashScreen": {
@@ -19,5 +26,4 @@ const config: CapacitorConfig = {
       "splashImmersive": true
     }
   }
-};
-export default config;
+}

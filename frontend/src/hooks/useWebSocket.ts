@@ -2,6 +2,8 @@ import { useEffect, useState, useRef } from 'react';
 import { io, Socket } from 'socket.io-client';
 import { WS_URL } from '../api/config';
 
+const notificationSound = new Audio('/assets/sounds/notification.mp3');
+
 export const useWebSocket = (conversationId?: string, userId?: string) => {
     const [latestMessage, setLatestMessage] = useState<any>(null);
     const socketRef = useRef<Socket | null>(null);
@@ -22,6 +24,23 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
         };
 
         const onNewMessage = (payload: any) => {
+            // Проверяем: сообщение не наше
+            const isNotMe = String(payload.senderId) !== String(userId);
+
+            //
+            const isRealMessage = payload.text || payload.content || payload.filePath;
+
+
+            if (isNotMe && isRealMessage) {
+                // Играем звук (браузер разрешит, если юзер хотя бы раз кликнул по сайту)
+                notificationSound.play().catch(() => console.log('Sound blocked by browser'));
+
+                // Вибрация (работает в Android APK и PWA на Android)
+                if ('vibrate' in navigator) {
+                    navigator.vibrate(200); // Вибрируем 200мс
+                }
+            }
+
             setLatestMessage(payload);
         };
 

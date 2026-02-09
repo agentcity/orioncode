@@ -5,10 +5,12 @@ import { StaleWhileRevalidate, CacheFirst, NetworkOnly, NetworkFirst } from 'wor
 import { ExpirationPlugin } from 'workbox-expiration';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
-const self = globalThis as unknown as ServiceWorkerGlobalScope;
+interface Window {
+    __WB_MANIFEST: any;
+}
+declare const self: ServiceWorkerGlobalScope;
 
 const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
-
 
 // 1. Предварительный кэш билда (то, что генерирует webpack)
 // @ts-ignore: Это нужно, чтобы TS не ругался на отсутствие переменной до сборки
@@ -73,18 +75,18 @@ registerRoute(
 );
 
 // Позволяет новому воркеру сразу брать управление (для быстрого обновления)
-self.addEventListener('message', (event) => {
+(self as any).addEventListener('message', (event: any) => {
     if (event.data && event.data.type === 'SKIP_WAITING') {
-        self.skipWaiting();
+        (self as any).skipWaiting();
     }
 });
 
 // Добавь это в конец:
-self.addEventListener('install', () => {
-    self.skipWaiting(); // Принудительно активируем новый воркер сразу после скачивания
+(self as any).addEventListener('install', () => {
+    (self as any).skipWaiting(); // Принудительно активируем новый воркер сразу после скачивания
 });
 
-self.addEventListener('activate', (event) => {
-    event.waitUntil(self.clients.claim()); // Заставляем воркер сразу контролировать все открытые вкладки
+(self as any).addEventListener('activate', (event: any) => {
+    (self as any).waitUntil((self as any).clients.claim()); // Заставляем воркер сразу контролировать все открытые вкладки
 });
 

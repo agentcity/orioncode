@@ -3,7 +3,7 @@ import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-d
 import { AuthProvider, useAuth } from './context/AuthContext';
 import LoginPage from './pages/LoginPage';
 import DashboardPage from './pages/DashboardPage';
-import OfflineStub from './components/OfflineStub'; // Создайте этот компонент (код ниже)
+import OfflineStub from './components/OfflineStub';
 import axiosClient from './api/axiosClient';
 import { CircularProgress, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 
@@ -36,6 +36,11 @@ const App: React.FC = () => {
                 window.location.reload();
             });
         }
+    }, []);
+
+    // Запрос разрешения на уведомления
+    useEffect(() => {
+        Notification.requestPermission();
     }, []);
 
     useEffect(() => {

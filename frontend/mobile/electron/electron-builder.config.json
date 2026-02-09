@@ -9,9 +9,7 @@
     "capacitor.config.*",
     "app/**/*"
   ],
-  "publish": {
-    "provider": "github"
-  },
+  "publish": null,
   "nsis": {
     "allowElevation": true,
     "oneClick": false,
