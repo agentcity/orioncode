@@ -1,17 +1,31 @@
 /* eslint-disable no-restricted-globals */
 import { precacheAndRoute } from 'workbox-precaching';
-import { registerRoute } from 'workbox-routing';
-import { StaleWhileRevalidate, CacheFirst, NetworkOnly } from 'workbox-strategies';
+import { registerRoute, NavigationRoute } from 'workbox-routing';
+import { StaleWhileRevalidate, CacheFirst, NetworkOnly, NetworkFirst } from 'workbox-strategies';
 import { ExpirationPlugin } from 'workbox-expiration';
 import { BackgroundSyncPlugin } from 'workbox-background-sync';
 
-declare const self: ServiceWorkerGlobalScope;
+const self = globalThis as unknown as ServiceWorkerGlobalScope;
 
 const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
 
+
 // 1. Предварительный кэш билда (то, что генерирует webpack)
+// @ts-ignore: Это нужно, чтобы TS не ругался на отсутствие переменной до сборки
 precacheAndRoute(self.__WB_MANIFEST);
 
+// Регистрируем маршрут для навигации (переходы по страницам)
+const navigationRoute = new NavigationRoute(new NetworkFirst({
+    cacheName: 'navigations',
+    plugins: [
+        {
+            // Если сеть упала, принудительно отдаем index.html из кэша
+            handlerDidError: async () => caches.match('/index.html'),
+        },
+    ],
+}));
+
+registerRoute(navigationRoute);
 
 // 2. Кэшируем картинки и шрифты (Cache First)
 // Они не меняются, поэтому берем из кэша, экономя трафик
@@ -64,3 +78,13 @@ self.addEventListener('message', (event) => {
         self.skipWaiting();
     }
 });
+
+// Добавь это в конец:
+self.addEventListener('install', () => {
+    self.skipWaiting(); // Принудительно активируем новый воркер сразу после скачивания
+});
+
+self.addEventListener('activate', (event) => {
+    event.waitUntil(self.clients.claim()); // Заставляем воркер сразу контролировать все открытые вкладки
+});
+

@@ -30,6 +30,15 @@ const App: React.FC = () => {
     const [isServerAvailable, setIsServerAvailable] = useState(true);
 
     useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                // Когда воркер обновился — перезагружаем страницу
+                window.location.reload();
+            });
+        }
+    }, []);
+
+    useEffect(() => {
         // 1. Мониторинг интернета на самом устройстве
         const handleStatusChange = () => setIsOnline(navigator.onLine);
         window.addEventListener('online', handleStatusChange);

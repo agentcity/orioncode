@@ -26,6 +26,8 @@ if [ -d "android" ]; then
 fi
 
 # 4. Сборка iOS и macOS (требуется Xcode)
+
+# 4. Сборка iOS и macOS (требуется Xcode)
 if [ -d "ios" ]; then
     echo -e "${GREEN}4. Подготовка iOS/macOS...${NC}"
     # Открывает Xcode для финальной подписи и сборки
