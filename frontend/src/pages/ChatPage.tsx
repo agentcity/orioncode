@@ -34,6 +34,18 @@ const StyledBadge = styled(Badge, {
     '@keyframes ripple': { '0%': { transform: 'scale(.8)', opacity: 1 }, '100%': { transform: 'scale(2.4)', opacity: 0 } },
 }));
 
+
+const formatLastSeen = (date?: string) => {
+    if (!date) return 'давно';
+    const lastSeen = new Date(date);
+    const now = new Date();
+    const diffInSec = Math.floor((now.getTime() - lastSeen.getTime()) / 1000);
+    if (diffInSec < 60) return 'только что';
+    if (diffInSec < 3600) return `${Math.floor(diffInSec / 60)} мин. назад`;
+    if (diffInSec < 86400) return `${Math.floor(diffInSec / 3600)} ч. назад`;
+    return lastSeen.toLocaleDateString();
+};
+
 const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
     const { id } = useParams<{ id: string }>();
     const navigate = useNavigate();
@@ -55,6 +67,17 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
     const messagesEndRef = useRef<HTMLDivElement>(null);
 
+    // состояние после загрузки conversation
+    const [chatPartner, setChatPartner] = useState<any>(null);
+
+    useEffect(() => {
+        if (conversation && conversation.contact) {
+            setChatPartner(conversation.contact);
+            // Сразу синхронизируем статус из загруженных данных
+            setIsContactOnline(!!conversation.contact.isOnline);
+        }
+    }, [conversation]);
+
 
     useEffect(() => {
         if (id) {
@@ -70,9 +93,28 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
         // Если это СОБЫТИЕ (typing или статус)
         if (latestMessage.event) {
             // 1. Статус "В сети"
-            if (latestMessage.event === 'userStatusChanged' && latestMessage.userId === conversation?.contact?.id) {
-                setIsContactOnline(latestMessage.status);
-                return;
+            if (latestMessage.event == 'userStatusChanged') {
+
+                const socketUserId = String(latestMessage.userId).toLowerCase();
+                const isOnline = latestMessage.status === 'online';
+
+                // 1. Пытаемся найти ID контакта (учитывая разные уровни вложенности)
+                const currentContactId = String(conversation?.contact?.id || chatPartner?.id || '').toLowerCase();
+
+
+                // 2. Если ID совпали ИЛИ у нас еще нет данных (на всякий случай запоминаем)
+                if (socketUserId === currentContactId && currentContactId !== 'null' && currentContactId !== '') {
+                    setIsContactOnline(isOnline);
+
+                    setChatPartner((prev: any) => {
+                        if (!prev) return prev;
+                        return {
+                            ...prev,
+                            isOnline: isOnline,
+                            lastSeen: latestMessage.lastSeen || new Date().toISOString()
+                        };
+                    });
+                }
             }
 
             // 2. Индикатор "Печатает..."
@@ -117,7 +159,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
 
             setTimeout(scrollToBottom, 50);
         }
-    }, [latestMessage, conversation?.contact?.id, id, currentUser?.id]);
+    }, [latestMessage, conversation?.contact?.id, id, currentUser?.id, chatPartner?.id]);
 
     const fetchChat = async () => {
         try {
@@ -188,7 +230,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
         switch (type?.toLowerCase()) {
             case 'whatsapp': return <WhatsAppIcon sx={{ fontSize: 18, color: '#25D366', ml: 1 }} />;
             case 'telegram': return <TelegramIcon sx={{ fontSize: 18, color: '#24A1DE', ml: 1 }} />;
-            case 'internal': return <HubIcon sx={{ fontSize: 18, color: '#666', ml: 1 }} />;
+            case 'orion': return <HubIcon sx={{ fontSize: 18, color: '#666', ml: 1 }} />;
             default: return null;
         }
     };
@@ -212,8 +254,8 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                         </Typography>
                         {getChannelIcon(conversation.type)}
                     </Box>
-                    <Typography variant="caption" color={isContactOnline ? "#44b700" : "text.secondary"}>
-                        {isContactOnline ? '• в сети' : 'был(а) недавно'} • {conversation.type ? conversation.type.toUpperCase() : 'CHAT'}
+                    <Typography variant="caption" color={chatPartner?.isOnline || isContactOnline ? "#44b700" : "text.secondary"}>
+                        {chatPartner?.isOnline|| isContactOnline ? 'в сети' : `был(а) ${formatLastSeen(chatPartner?.lastSeen)}`} • {conversation.type ? conversation.type.toUpperCase() : 'CHAT'}
                     </Typography>
                 </Box>
             </Box>
@@ -228,7 +270,7 @@ const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                     const imageSrc = msg.preview ||
                         (msg.payload?.filePath ? `${serverBase}${msg.payload.filePath}` : null) ||
                         (msg.attachments?.[0]?.url ? `${serverBase}${msg.attachments[0].url}` : null);
-                    const isMine = conversation.type === 'internal'
+                    const isMine = conversation.type === 'orion'
                         ? (String(msg.payload?.senderId).toLowerCase() === String(currentUser?.id).toLowerCase())
                         : (msg.direction === 'outbound' || msg.direction === 'outgoing');
 

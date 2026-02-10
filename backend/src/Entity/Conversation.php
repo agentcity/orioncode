@@ -149,7 +149,7 @@ class Conversation
     #[Groups(['conversation:list', 'chat'])]
     public function getDisplayName(): string
     {
-        if ($this->type === 'internal' && $this->targetUser) {
+        if ($this->type === 'orion' && $this->targetUser) {
             return $this->targetUser->getFirstName() . ' ' . $this->targetUser->getLastName();
         }
         return $this->contact ? $this->contact->getMainName() : 'Системный чат';

@@ -20,6 +20,8 @@ export interface Contact {
     id: string;
     mainName: string;
     avatarUrl?: string;
+    isOnline?: boolean;   // Добавь это
+    lastSeen?: string;    // Добавь это
     // ... другие поля Contact
 }
 
@@ -27,7 +29,7 @@ export interface Conversation {
     id: string;
     accountId: string;
     contact: Contact;
-    type: 'telegram' | 'whatsapp' | 'internal' | 'max';
+    type: 'telegram' | 'whatsapp' | 'orion' | 'max';
     status: 'open' | 'closed' | 'pending';
     lastMessageAt: string;
     unreadCount: number;
@@ -58,6 +60,6 @@ export interface WebSocketMessagePayload {
     text?: string;
     senderName: string;
     type: 'incoming' | 'outgoing';
-    messengerType: 'telegram' | 'whatsapp' | 'max';
+    messengerType: 'telegram' | 'whatsapp' | 'orion' | 'max';
     // ...
 }

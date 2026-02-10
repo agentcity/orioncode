@@ -42,7 +42,7 @@ class MessageController extends AbstractController
 
             // Если это внутренний чат и в базе нет senderId,
             // пробуем определить его по направлению (только для истории)
-            if ($conversation->getType() === 'internal' && !isset($payload['senderId'])) {
+            if ($conversation->getType() === 'orion' && !isset($payload['senderId'])) {
                 if ($m->getDirection() === 'outbound') {
                     $payload['senderId'] = $conversation->getAssignedTo()->getId()->toString();
                 } else {

@@ -57,6 +57,13 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
         socket.on('newMessage', onNewMessage);
         socket.on('userStatusChanged', onStatusChange);
 
+        // --- ДОБАВЛЯЕМ HEARTBEAT ---
+        const heartbeatInterval = setInterval(() => {
+            if (socket.connected && userId) {
+                socket.emit('heartbeat', { userId }); // Сообщаем серверу, что мы живы
+            }
+        }, 30000); // Раз в 30 секунд
+
         // Если сокет уже подключен (при смене id чата)
         if (socket.connected && conversationId) {
             socket.emit('join_conversation', conversationId);
@@ -66,6 +73,7 @@ export const useWebSocket = (conversationId?: string, userId?: string) => {
             socket.off('connect', onConnect);
             socket.off('newMessage', onNewMessage);
             socket.off('userStatusChanged', onStatusChange);
+            clearInterval(heartbeatInterval);
         };
     }, [conversationId, userId]); // Реагирует на смену чата
 

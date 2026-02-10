@@ -14,6 +14,7 @@ export const UserSelector: React.FC<{ open: boolean; onClose: () => void; onSele
     const [loading, setLoading] = useState(true);
     const [searchQuery, setSearchQuery] = useState(''); // Состояние поиска
 
+
     useEffect(() => {
         if (open) {
             setLoading(true);

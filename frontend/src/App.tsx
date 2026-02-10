@@ -8,7 +8,7 @@ import axiosClient from './api/axiosClient';
 import LoadingScreen from './components/LoadingScreen';
 import { LocalNotifications } from '@capacitor/local-notifications';
 import { CircularProgress, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
-
+import { useWebSocket } from './hooks/useWebSocket';
 
 
 const theme = createTheme({
@@ -26,9 +26,13 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 const AppContent: React.FC = () => {
-    const { isAuthenticated, loading } = useAuth();
+    const { isAuthenticated, loading, user} = useAuth();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isServerAvailable, setIsServerAvailable] = useState(true);
+
+    // ГЛОБАЛЬНЫЙ СОКЕТ: инициализируется сразу после логина
+    // Мы передаем только userId, чтобы сервер пометил нас как ONLINE
+    useWebSocket(undefined, user?.id);
 
     useEffect(() => {
         const requestPushPermission = async () => {

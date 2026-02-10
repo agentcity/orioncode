@@ -3,6 +3,7 @@ import {
     Box,
     List,
     ListItemButton,
+    ListItemAvatar,
     ListItemText,
     Avatar,
     Typography,
@@ -20,11 +21,37 @@ import AddCommentIcon from '@mui/icons-material/AddComment'; // Иконка д�
 import HubIcon from '@mui/icons-material/Hub';
 import ChatPage from './ChatPage';
 import axiosClient from '../api/axiosClient';
-import { Conversation } from '../types';
+import { Conversation} from '../types';
 import { useWebSocket } from '../hooks/useWebSocket';
 import { UserSelector } from '../components/UserSelector'; // Импорт нового компонента
 import LogoutIcon from '@mui/icons-material/Logout';
 import { useAuth } from '../context/AuthContext';
+import {  styled, Theme  } from '@mui/material/styles';
+
+const StyledBadge = styled(Badge)(({ theme }: { theme: Theme }) => ({
+    '& .MuiBadge-badge': {
+        backgroundColor: '#44b700',
+        color: '#44b700',
+        boxShadow: `0 0 0 2px ${theme.palette.background.paper}`,
+        width: 10,
+        height: 10,
+        borderRadius: '50%',
+    },
+}));
+
+// 2. Функция форматирования времени
+const formatLastSeen = (date?: string) => {
+    if (!date) return 'давно';
+    const lastSeen = new Date(date);
+    const now = new Date();
+    const diffInSec = Math.floor((now.getTime() - lastSeen.getTime()) / 1000);
+
+    if (diffInSec < 60) return 'только что';
+    if (diffInSec < 3600) return `${Math.floor(diffInSec / 60)} мин. назад`;
+    if (diffInSec < 86400) return `${Math.floor(diffInSec / 3600)} ч. назад`;
+    return lastSeen.toLocaleDateString();
+};
+
 const DashboardPage: React.FC = () => {
     const theme = useTheme();
     const isMobile = useMediaQuery(theme.breakpoints.down('md'));
@@ -39,22 +66,29 @@ const DashboardPage: React.FC = () => {
     const { latestMessage } = useWebSocket();
     const { logout } = useAuth();
 
+
     useEffect(() => {
         fetchConversations();
     }, []);
 
     useEffect(() => {
-        if (latestMessage?.conversationId) {
-            setConversations((prev) => {
-                const list = [...prev];
-                const idx = list.findIndex((c) => c.id === latestMessage.conversationId);
-                if (idx !== -1) {
-                    const item = { ...list[idx], lastMessageAt: latestMessage.sentAt };
-                    list.splice(idx, 1);
-                    return [item, ...list];
+        if (latestMessage?.event === 'userStatusChanged') {
+            const { userId, status, lastSeen } = latestMessage;
+
+            setConversations(prev => prev.map(conv => {
+                // Проверяем, относится ли статус к контакту в этом чате
+                if (conv.contact && conv.contact.id === userId) {
+                    return {
+                        ...conv,
+                        contact: {
+                            ...conv.contact,
+                            isOnline: status === 'online',
+                            lastSeen: lastSeen || new Date().toISOString()
+                        }
+                    };
                 }
-                return list;
-            });
+                return conv;
+            }));
         }
     }, [latestMessage]);
 
@@ -83,7 +117,7 @@ const DashboardPage: React.FC = () => {
         const t = type?.toLowerCase();
         if (t === 'whatsapp') return <WhatsAppIcon sx={{ fontSize: 14, color: '#25D366' }} />;
         if (t === 'telegram') return <TelegramIcon sx={{ fontSize: 14, color: '#24A1DE' }} />;
-        if (t === 'internal') return <HubIcon sx={{ fontSize: 14, color: '#666' }} />;
+        if (t === 'orion') return <HubIcon sx={{ fontSize: 14, color: '#666' }} />;
         return null;
     };
 
@@ -126,17 +160,22 @@ const DashboardPage: React.FC = () => {
                                 sx={{
                                     borderBottom: '1px solid #f0f0f0',
                                     '&.Mui-selected': { bgcolor: '#e3f2fd' },
+                                    py: 1.5 // Немного увеличим отступ для двух строк статуса
                                 }}
                             >
-                                <Badge
+                                {/* СТАТУС ОНЛАЙН (Сверху) */}
+                                <StyledBadge
                                     overlap="circular"
                                     anchorOrigin={{ vertical: 'bottom', horizontal: 'right' }}
-                                    badgeContent={getChannelIcon(conv.type)}
+                                    variant="dot"
+                                    invisible={!conv.contact?.isOnline}
                                 >
-                                    <Avatar sx={{ bgcolor: conv.type === 'internal' ? '#9c27b0' : 'primary.main' }}>
+
+                                    <Avatar sx={{ bgcolor: conv.type === 'orion' ? '#9c27b0' : 'primary.main' }}>
                                         {conv.contact?.mainName?.[0] || 'U'}
                                     </Avatar>
-                                </Badge>
+                                </StyledBadge>
+
                                 <ListItemText
                                     sx={{ ml: 2 }}
                                     primary={
@@ -144,8 +183,26 @@ const DashboardPage: React.FC = () => {
                                             {conv.contact?.mainName || 'Неизвестно'}
                                         </Typography>
                                     }
-                                    secondary={conv.type?.toUpperCase() || 'CHAT'}
+                                    secondary={
+                                        <Box component="span" sx={{ display: 'flex', flexDirection: 'column' }}>
+                                            {/* ТЕКСТ СТАТУСА */}
+                                            <Typography
+                                                variant="caption"
+                                                sx={{
+                                                    color: conv.contact?.isOnline ? '#44b700' : 'text.secondary',
+                                                    fontWeight: conv.contact?.isOnline ? 600 : 400,
+                                                    fontSize: '0.7rem'
+                                                }}
+                                            >
+                                                {conv.contact?.isOnline ? 'в сети' : `был(а) ${formatLastSeen(conv.contact?.lastSeen)}`}
+                                            </Typography>
+                                            <Typography variant="caption" sx={{ opacity: 0.8, textTransform: 'uppercase' }}>
+                                                {conv.type || 'ORION'}  {getChannelIcon(conv.type)}
+                                            </Typography>
+                                        </Box>
+                                    }
                                 />
+
                                 {conv.unreadCount > 0 && (
                                     <Badge badgeContent={conv.unreadCount} color="error" sx={{ mr: 2 }} />
                                 )}

@@ -16,6 +16,8 @@ services:
             APP_SECRET: '${APP_SECRET:-ChangeMeSecret}'
             DATABASE_URL: "postgresql://${DB_USER:-app_user}:${DB_PASSWORD:-app_password}@orion_db:5432/${DB_NAME:-app_db}?serverVersion=13&charset=utf8"
             MESSENGER_TRANSPORT_DSN: "redis://orion_redis:6379/0"
+            REDIS_URL: 'redis://orion_redis:6379'
+
         depends_on:
             - orion_db
             - orion_redis

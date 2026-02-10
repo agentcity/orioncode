@@ -12,6 +12,7 @@ use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\Security\Http\Attribute\IsGranted;
 use Ramsey\Uuid\Uuid;
+use Symfony\Component\Cache\Adapter\RedisAdapter;
 
 #[Route('/api/conversations')]
 #[IsGranted('IS_AUTHENTICATED_FULLY')]
@@ -21,6 +22,14 @@ class ConversationController extends AbstractController
     public function index(ConversationRepository $repository, \Doctrine\ORM\EntityManagerInterface $em): JsonResponse
     {
         $user = $this->getUser();
+
+        try {
+            $redisUrl = $_ENV['REDIS_URL'] ?? 'redis://orion_redis:6379';
+            $redis = RedisAdapter::createConnection($redisUrl);
+        } catch (\Exception $e) {
+            $redis = null;
+        }
+
         $userId = $user->getId()->toString();
 
         // Используем чистый SQL-подобный подход через QueryBuilder, чтобы точно найти всё
@@ -34,17 +43,35 @@ class ConversationController extends AbstractController
             ->getQuery()
             ->getResult();
 
-        $data = array_map(function($c) use ($user) {
+        $data = array_map(function($c) use ($user, $redis) {
             // Определяем, кто наш собеседник для отображения имени
             $contactName = 'Неизвестно';
 
-            if ($c->getType() === 'internal') {
+            if ($c->getType() === 'orion') {
                 $recipient = ($c->getAssignedTo() === $user) ? $c->getTargetUser() : $c->getAssignedTo();
                 if ($recipient) {
                     $contactName = $recipient->getFirstName() . ' ' . $recipient->getLastName();
+                    $targetId = $recipient->getId()->toString();
                 }
             } else {
                 $contactName = $c->getContact() ? $c->getContact()->getMainName() : 'Внешний контакт';
+                $targetId = $c->getContact()?->getId();
+            }
+
+            // 2. Проверяем статус в Redis
+            $isOnline = false;
+            $lastSeen = null;
+
+            if ($redis && $targetId) {
+                try {
+                    // Устанавливаем таймаут, чтобы скрипт не висел, если Redis тупит
+                    $status = $redis->get("user:status:{$targetId}");
+                    $isOnline = ($status === 'online');
+                    $lastSeen = $redis->get("user:lastSeen:{$targetId}");
+                } catch (\Exception $e) {
+                    // Если Redis упал, просто ставим false и идем дальше
+                    $isOnline = false;
+                }
             }
 
             return [
@@ -56,6 +83,8 @@ class ConversationController extends AbstractController
                 'contact' => [
                     'id' => $c->getContact()?->getId(),
                     'mainName' => $contactName,
+                    'isOnline' => $isOnline,
+                    'lastSeen' => $lastSeen,
                 ]
             ];
         }, $conversations);
@@ -67,6 +96,12 @@ class ConversationController extends AbstractController
     public function show(Conversation $conversation): JsonResponse
     {
         $user = $this->getUser();
+        try {
+            $redisUrl = $_ENV['REDIS_URL'] ?? 'redis://orion_redis:6379';
+            $redis = RedisAdapter::createConnection($redisUrl);
+        } catch (\Exception $e) {
+            $redis = null;
+        }
 
         // Проверка доступа
         if ($conversation->getAssignedTo() !== $user && $conversation->getTargetUser() !== $user) {
@@ -74,18 +109,46 @@ class ConversationController extends AbstractController
         }
 
         // Определяем имя для шапки чата
-        if ($conversation->getType() === 'internal') {
+        $targetId = null; // Инициализируем
+
+        if ($conversation->getType() === 'orion') {
             $recipient = ($conversation->getAssignedTo() === $user) ? $conversation->getTargetUser() : $conversation->getAssignedTo();
-            $contactName = $recipient ? ($recipient->getFirstName() . ' ' . $recipient->getLastName()) : 'Коллега';
+            if ($recipient) {
+                $contactName = $recipient->getFirstName() . ' ' . $recipient->getLastName();
+                $targetId = $recipient->getId()->toString(); // БЕРЕМ ID ИЗ RECIPIENT
+            } else {
+                $contactName = 'Коллега';
+            }
         } else {
-            $contactName = $conversation->getContact() ? $conversation->getContact()->getMainName() : 'Клиент';
+            $contact = $conversation->getContact();
+            $contactName = $contact ? $contact->getMainName() : 'Клиент';
+            $targetId = $contact ? $contact->getId() : null; // БЕРЕМ ID ИЗ CONTACT
+        }
+
+        // 2. Проверяем статус в Redis
+        $isOnline = false;
+        $lastSeen = null;
+
+        if ($redis && $targetId) {
+            try {
+                // Устанавливаем таймаут, чтобы скрипт не висел, если Redis тупит
+                $status = $redis->get("user:status:{$targetId}");
+                $isOnline = ($status === 'online');
+                $lastSeen = $redis->get("user:lastSeen:{$targetId}");
+            } catch (\Exception $e) {
+                // Если Redis упал, просто ставим false и идем дальше
+                $isOnline = false;
+            }
         }
 
         return $this->json([
             'id' => $conversation->getId()->toString(),
             'type' => $conversation->getType(),
             'contact' => [
+                'id' => $targetId,
                 'mainName' => $contactName,
+                'isOnline' => $isOnline,
+                'lastSeen' => $lastSeen,
             ]
         ]);
     }
@@ -111,7 +174,7 @@ class ConversationController extends AbstractController
             $existing = $em->getRepository(Conversation::class)->createQueryBuilder('c')
                 ->where('c.type = :type')
                 ->andWhere('(c.assignedTo = :u1 AND c.targetUser = :u2) OR (c.assignedTo = :u2 AND c.targetUser = :u1)')
-                ->setParameter('type', 'internal')
+                ->setParameter('type', 'orion')
                 ->setParameter('u1', $currentUser)
                 ->setParameter('u2', $targetUser)
                 ->getQuery()
@@ -128,7 +191,7 @@ class ConversationController extends AbstractController
             $reflection->setAccessible(true);
             $reflection->setValue($conversation, Uuid::uuid4());
 
-            $conversation->setType('internal');
+            $conversation->setType('orion');
             $conversation->setAssignedTo($currentUser);
             $conversation->setTargetUser($targetUser);
 
