@@ -30,3 +30,9 @@ services:
         arguments:
             $tgToken: '%telegram_token%'
 
+
+    App\Service\AI\AiModelInterface: '@App\Service\AI\DeepSeekService'
+
+    App\Service\AI\DeepSeekService:
+        arguments:
+            $deepseekApiKey: '%env(DEEPSEEK_API_KEY)%'
