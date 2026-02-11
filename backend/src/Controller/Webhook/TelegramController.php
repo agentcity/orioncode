@@ -63,7 +63,7 @@ class TelegramController extends AbstractController {
         $this->broadcast($conv->getId()->toString(), $msg);
 
         // Авто-ответ ИИ (он сам ответит в TG через ChatService)
-        $chatService->generateAiReply($conv, $text);
+        //$chatService->generateAiReply($conv, $text);
 
         return $this->json(['ok' => true]);
     }

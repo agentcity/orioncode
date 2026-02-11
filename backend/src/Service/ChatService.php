@@ -101,13 +101,19 @@ class ChatService
             $this->sendToExternalMessenger($conversation, $message->getText());
         }
 
+
+
         // 2. Рассылаем сокетам сообщение пользователя
         $this->broadcastToRedis($conversation, $message);
 
         // 3. ПРОВЕРКА: Если пишем ИИ (по UUID)
-        $targetId = $this->resolveTargetId($conversation, $user);
-        if ($targetId === self::AI_UUID) {
-            $this->generateAiReply($conversation, $data['text'] ?? '');
+        // ПРОВЕРКА ДЛЯ ИИ (ЗАЩИТА ОТ ЦИКЛА):
+        // Если это сообщение от БОТА (senderType === 'bot'), НЕ ГЕНЕРИРУЕМ ответ!
+        if ($message->getSenderType() !== 'bot') {
+            $targetId = $this->resolveTargetId($conversation, $user);
+            if ($targetId === self::AI_UUID) {
+                $this->generateAiReply($conversation, $text);
+            }
         }
 
         return $message;
@@ -188,26 +194,32 @@ class ChatService
         return $c->getContact() ? $c->getContact()->getId() : null;
     }
 
-    private function sendExternal(Conversation $conversation, string $text): void
+// Добавь это тело метода в ChatService.php
+    private function sendToExternalMessenger(Conversation $conversation, string $text): void
     {
-        $source = $conversation->getType(); // 'telegram', 'whatsapp' и т.д.
-        $messenger = $this->messengerFactory->get($source);
+        $type = $conversation->getType();
+        $messenger = $this->messengerFactory->get($type);
 
         if ($messenger) {
             $account = $conversation->getAccount();
-            $externalId = $conversation->getContact()->getExternalId();
+            $contact = $conversation->getContact();
 
-            // Динамически формируем ключ, например 'telegram_token' или 'whatsapp_apikey'
-            $credentialKey = $source . '_token';
-            $token = $account->getCredential($credentialKey);
+            if (!$account || !$contact) return;
 
-            if ($token) {
-                $messenger->sendMessage($externalId, $text, $token);
-            } else {
-                error_log("Missing credential: {$credentialKey} for Account: " . $account->getId());
+            // Ищем токен: 'telegram_token', 'whatsapp_token' и т.д.
+            $token = $account->getCredential($type . '_token');
+            $externalId = $contact->getExternalId();
+
+            if ($token && $externalId) {
+                try {
+                    $messenger->sendMessage($externalId, $text, $token);
+                } catch (\Exception $e) {
+                    error_log("EXTERNAL SEND ERROR ({$type}): " . $e->getMessage());
+                }
             }
         }
     }
+
 
     private function saveBase64File(string $base64): string
     {
