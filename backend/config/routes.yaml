@@ -21,3 +21,8 @@ api_index:
     path: /
     controller: App\Controller\Api\IndexController::index
     methods: [GET]
+
+webhooks:
+    resource: ../src/Controller/Webhook/
+    type: attribute
+    prefix: /api/webhooks
