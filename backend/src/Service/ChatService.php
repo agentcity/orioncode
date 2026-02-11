@@ -96,8 +96,9 @@ class ChatService
         $conversation->setLastMessageAt($message->getSentAt());
         $this->em->flush();
 
-        if ($conversation->getType() === 'telegram') {
-            $this->sendExternalMessage($conversation, $data['text']);
+        // 1. Отправляем сообщение во внешний мессенджер
+        if ($conversation->getType() !== 'orion') { // Если это не внутренний чат
+            $this->sendToExternalMessenger($conversation, $message->getText());
         }
 
         // 2. Рассылаем сокетам сообщение пользователя
@@ -149,6 +150,11 @@ class ChatService
 
         $this->em->persist($aiMsg);
         $this->em->flush();
+
+        // Отправляем ответ ИИ в чат мессенджера внешней системы
+        if ($conversation->getType() !== 'orion') {
+            $this->sendToExternalMessenger($conversation, $aiText);
+        }
 
         $this->broadcastToRedis($conversation, $aiMsg);
     }
