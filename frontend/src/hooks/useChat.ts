@@ -89,6 +89,19 @@ export const useChat = (id: string | undefined, currentUser: any) => {
     }, [latestMessage, conversation, chatPartner?.id, id, currentUser?.id, scrollToBottom]);
 
 
+    //Логика ОТПРАВКИ статуса "Печатаю"
+    useEffect(() => {
+        if (!socket || !id || !newMessageText.trim()) return;
+
+        // Сообщаем серверу, что мы печатаем в этой беседе
+        socket.emit('typing', {
+            conversationId: id,
+            userId: currentUser?.id
+        });
+    }, [newMessageText, id, socket, currentUser?.id]);
+
+
+
     const [replyTo, setReplyTo] = useState<Message | null>(null); // Состояние для цитаты
 
     const handleSend = async () => {
