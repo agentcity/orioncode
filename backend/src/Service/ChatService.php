@@ -10,6 +10,7 @@ use App\Service\AI\AiModelInterface;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\Cache\Adapter\RedisAdapter;
 use Symfony\Component\DependencyInjection\ParameterBag\ParameterBagInterface;
+use Symfony\Component\Uid\Uuid;
 
 class ChatService
 {
@@ -52,6 +53,44 @@ class ChatService
         $payload = $message->getPayload() ?? [];
         $payload['senderId'] = $user->getId()->toString();
         $message->setPayload($payload);
+
+
+
+        // ЛОГИКА ЦИТИРОВАНИЯ:
+        if (!empty($data['replyToId'])) {
+
+            try {
+                // Убеждаемся, что мы ищем по строке или UUID
+                if (Uuid::isValid($data['replyToId'])) {
+                    $parentMessage = $this->em->getRepository(Message::class)->find(Uuid::fromString($data['replyToId']));
+                } else {
+                    $parentMessage = $this->em->getRepository(Message::class)->find($data['replyToId']);
+                }
+
+                if ($parentMessage) {
+                    // 1. Устанавливаем связь в БД (через поле reply_to_id)
+                    $message->setReplyTo($parentMessage);
+
+                    // 2. Безопасно обновляем payload
+                    $currentPayload = $message->getPayload();
+                    // Если payload в базе хранится как строка, декодируем её
+                    $payload = is_string($currentPayload) ? json_decode($currentPayload, true) : ($currentPayload ?? []);
+
+                    $payload['replyTo'] = [
+                        'id'   => $parentMessage->getId()->toString(),
+                        'text' => mb_substr($parentMessage->getText(), 0, 100) // Ограничим длину для легкости
+                    ];
+
+                    $message->setPayload($payload);
+                }
+            } catch (\Exception $e) {
+                // Если ID битый или ошибка БД — просто логируем и идем дальше, не ломая отправку
+                error_log("ReplyTo Error: " . $e->getMessage());
+            }
+        }
+
+
+
 
         $this->em->persist($message);
         $conversation->setLastMessageAt($message->getSentAt());

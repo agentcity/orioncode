@@ -115,7 +115,7 @@ export const useChat = (id: string | undefined, currentUser: any) => {
         const tempId = `temp-${Date.now()}`;
         const newMessage = {
             id: tempId,
-            text,
+            text: text,
             direction: 'outbound',
             status: 'sent',
             sentAt: new Date().toISOString(),

@@ -91,6 +91,7 @@ dev-db-sync: ## Синхронизировать структуру БД с PHP-
 	@echo "✅ База данных синхронизирована!"
 
 dev-db-migrate: ## Запустить миграции (локально на Mac)
+	$(DC_DEV) exec orion_backend php bin/console make:migration
 	$(DC_DEV) exec orion_backend php bin/console doctrine:migrations:migrate --no-interaction
 
 # --- ТЕСТИРОВАНИЕ ---

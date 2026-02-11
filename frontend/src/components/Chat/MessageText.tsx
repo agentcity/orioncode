@@ -28,24 +28,38 @@ export const MessageTxt: React.FC<Props> = ({ msg, isMine, onReply }) => {
         }
     };
 
+    const scrollToOriginal = (targetId: string) => {
+        const element = document.getElementById(`msg-${targetId}`);
+        if (element) {
+            element.scrollIntoView({ behavior: 'smooth', block: 'center' });
+            // Подсветим на секунду, как в ТГ
+            element.style.backgroundColor = 'rgba(255, 255, 0, 0.2)';
+            setTimeout(() => element.style.backgroundColor = 'transparent', 1000);
+        }
+    };
+
     return (
-        <Box sx={{
-            display: 'flex',
-            flexDirection: 'column',
-            position: 'relative',
-            minWidth: '60px'
+        <Box
+            id={`msg-${msg.id}`}
+            sx={{
+                display: 'flex',
+                flexDirection: 'column',
+                position: 'relative',
+                minWidth: '60px'
         }}>
             {/* БЛОК ЦИТАТЫ (Reply Preview внутри облачка) */}
             {replyData && (
-                <Box sx={{
-                    mb: 1,
-                    p: '4px 8px',
-                    bgcolor: isMine ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)',
-                    borderLeft: '3px solid',
-                    borderColor: isMine ? '#fff' : 'primary.main',
-                    borderRadius: '4px',
-                    cursor: 'pointer',
-                    '&:hover': { opacity: 0.8 }
+                <Box
+                    onClick={() => scrollToOriginal(replyData.id)}
+                    sx={{
+                        mb: 1,
+                        p: '4px 8px',
+                        bgcolor: isMine ? 'rgba(255,255,255,0.15)' : 'rgba(0,0,0,0.05)',
+                        borderLeft: '3px solid',
+                        borderColor: isMine ? '#fff' : 'primary.main',
+                        borderRadius: '4px',
+                        cursor: 'pointer',
+                        '&:hover': { opacity: 0.8 }
                 }}>
                     <Typography
                         variant="caption"
@@ -55,7 +69,7 @@ export const MessageTxt: React.FC<Props> = ({ msg, isMine, onReply }) => {
                             color: isMine ? '#fff' : 'primary.main'
                         }}
                     >
-                        {isMine ? 'Вы' : (msg.conversation?.contact?.mainName || 'Собеседник')}
+                        Цитата
                     </Typography>
                     <Typography
                         variant="caption"

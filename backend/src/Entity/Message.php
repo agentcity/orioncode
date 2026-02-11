@@ -10,7 +10,7 @@ use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 use Symfony\Component\Serializer\Annotation\Groups;
 
-#[ORM\Entity(repositoryClass: MessageRepository::class)]
+#[ORM\Entity(repositoryClass: \App\Repository\MessageRepository::class)]
 #[ORM\Table(name: 'messages')]
 // Выносим каждый индекс в свой атрибут:
 #[ORM\Index(columns: ['conversation_id'], name: 'idx_message_conversation')]
@@ -62,6 +62,10 @@ class Message
 
     #[ORM\OneToMany(mappedBy: 'message', targetEntity: Attachment::class, cascade: ['persist', 'remove'])]
     private Collection $attachments;
+
+    #[ORM\ManyToOne(targetEntity: self::class)]
+    #[ORM\JoinColumn(name: "reply_to_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
+    private ?Message $replyTo = null;
 
     public function __construct()
     {
@@ -214,6 +218,13 @@ class Message
                 $attachment->setMessage(null);
             }
         }
+        return $this;
+    }
+    public function getReplyTo(): ?self { return $this->replyTo; }
+
+    public function setReplyTo(?self $replyTo): self
+    {
+        $this->replyTo = $replyTo;
         return $this;
     }
 }
