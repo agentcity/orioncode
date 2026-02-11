@@ -4,6 +4,7 @@
 .env.local
 .DS_Store
 **/ .DS_Store
+backend/.env
 backend/.env.local
 backend/.env.local.php
 backend/.env.*.local
@@ -17,5 +18,5 @@ backend/public/bundles/
 backend/.phpunit.result.cache
 backend/.php-cs-fixer.cache
 backend/var/log/
-backend/public/uploads
 backups/
+nginx/logs

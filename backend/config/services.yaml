@@ -31,8 +31,39 @@ services:
             $tgToken: '%telegram_token%'
 
 
-    App\Service\AI\AiModelInterface: '@App\Service\AI\DeepSeekService'
+    App\Service\AI\AiModelInterface: '@App\Service\AI\ProxyApiService'
 
     App\Service\AI\DeepSeekService:
         arguments:
             $deepseekApiKey: '%env(DEEPSEEK_API_KEY)%'
+
+    App\Service\AI\GigaChatService:
+        arguments:
+            $gigaChatAuthKey: '%env(GIGACHAT_API_KEY)%'
+
+    App\Service\AI\YandexGptService:
+        arguments:
+            $yandexApiKey: '%env(YANDEX_API_KEY)%'
+            $yandexFolderId: '%env(YANDEX_FOLDER_ID)%'
+
+    App\Service\AI\ProxyApiService:
+        arguments:
+            $proxyApiKey: '%env(PROXY_API_KEY)%'
+
+    App\Service\AI\OpenAiService:
+        arguments:
+            $openAiKey: '%env(OPENAI_API_KEY)%'
+
+
+    # Автоматически помечаем все классы, реализующие MessengerInterface
+    _instanceof:
+        App\Service\Messenger\MessengerInterface:
+            tags: ['app.messenger']
+
+    # Настройка фабрики: она соберет все помеченные сервисы в итератор
+    App\Service\Messenger\MessengerFactory:
+        arguments: [!tagged_iterator app.messenger]
+
+    # Если в TelegramService нужен специфический HttpClient (опционально)
+    App\Service\Messenger\TelegramService:
+        autowire: true

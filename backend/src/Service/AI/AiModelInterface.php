@@ -4,5 +4,6 @@ namespace App\Service\AI;
 
 interface AiModelInterface
 {
-    public function ask(string $prompt): string;
+    /** @param array $history Массив сообщений [['role' => 'user', 'content' => '...'], ...] */
+    public function ask(array $history): string;
 }

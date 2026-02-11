@@ -4,8 +4,9 @@ import { MessageList } from '../components/Chat/MessageList';
 import { MessageInput } from '../components/Chat/MessageInput';
 import { useParams, useNavigate } from 'react-router-dom';
 import {
-    Box, Typography, CircularProgress, Dialog
+    Box, Typography, CircularProgress, Dialog, IconButton
 } from '@mui/material';
+import CloseIcon from '@mui/icons-material/Close';
 import { useChat } from '../hooks/useChat';
 import { useAuth } from '../context/AuthContext';
 
@@ -42,6 +43,9 @@ export const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 setImageErrors={chat.setImageErrors}
                 setSelectedImage={chat.setSelectedImage}
                 messagesEndRef={chat.messagesEndRef}
+                setNewMessageText = {chat.setNewMessageText}
+                replyTo = {chat.replyTo}
+                setReplyTo = {chat.setReplyTo}
             />
 
 
@@ -51,6 +55,29 @@ export const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                     <Typography variant="caption" sx={{ fontStyle: 'italic', color: 'primary.main' }}>
                         {chat.conversation.contact?.mainName} печатает...
                     </Typography>
+                </Box>
+            )}
+
+            {chat.replyTo && (
+                <Box sx={{
+                    p: 1,
+                    display: 'flex',
+                    alignItems: 'center',
+                    bgcolor: 'rgba(0,0,0,0.03)',
+                    borderLeft: '4px solid',
+                    borderColor: 'primary.main'
+                }}>
+                    <Box sx={{ flex: 1, overflow: 'hidden' }}>
+                        <Typography variant="caption" color="primary" fontWeight="bold">
+                            Ответ на сообщение
+                        </Typography>
+                        <Typography variant="body2" noWrap sx={{ opacity: 0.8 }}>
+                            {chat.replyTo.text}
+                        </Typography>
+                    </Box>
+                    <IconButton size="small" onClick={() => chat.setReplyTo(null)}>
+                        <CloseIcon fontSize="small" />
+                    </IconButton>
                 </Box>
             )}
 

@@ -81,35 +81,55 @@ export const useChat = (id: string | undefined, currentUser: any) => {
         setIsTyping(false);
         setMessages(prev => {
             if (prev.some(m => m.id === latestMessage.id)) return prev;
-            const isDuplicate = prev.some(m => m.text === latestMessage.text && m.direction === 'outbound' && (Date.now() - new Date(m.sentAt).getTime() < 2000));
+            const isDuplicate = prev.some(m => m.text === latestMessage.text && m.direction === 'outbound' && (Date.now() - new Date(m.sentAt).getTime() < 3000));
             if (isDuplicate && latestMessage.direction === 'inbound') return prev;
             return [...prev, latestMessage as Message];
         });
         setTimeout(scrollToBottom, 50);
     }, [latestMessage, conversation, chatPartner?.id, id, currentUser?.id, scrollToBottom]);
 
+
+    const [replyTo, setReplyTo] = useState<Message | null>(null); // Состояние для цитаты
+
     const handleSend = async () => {
         if (!newMessageText.trim() || !id) return;
         const text = newMessageText;
+        const currentReply = replyTo; // Фиксируем текущую цитату
+
         setNewMessageText('');
+        setReplyTo(null); // Сбрасываем превью над инпутом
+
         const tempId = `temp-${Date.now()}`;
-        setMessages(prev => [...prev, { 
-            id: tempId, 
-            text, 
-            direction: 'outbound', 
-            status: 'sent', 
-            sentAt: new Date().toISOString(), 
-            conversationId: id, 
+        const newMessage = {
+            id: tempId,
+            text,
+            direction: 'outbound',
+            status: 'sent',
+            sentAt: new Date().toISOString(),
+            conversationId: id,
             isRead: true,
-            senderType: 'user', // ДОБАВИЛИ
-            payload: { senderId: currentUser?.id } 
-        } as Message]);
+            senderType: 'user',
+            payload: {
+                senderId: currentUser?.id,
+                replyTo: currentReply ? { id: currentReply.id, text: currentReply.text } : null // Добавляем в payload
+            }
+        } as Message;
+
+        setMessages(prev => [...prev, newMessage]);
         setTimeout(scrollToBottom, 50);
+
         try {
-            const res = await axiosClient.post(`/conversations/${id}/messages`, { text });
+            // Отправляем на бэкенд вместе с данными о цитате
+            const res = await axiosClient.post(`/conversations/${id}/messages`, {
+                text,
+                replyToId: currentReply?.id // Бэкенд должен это сохранить
+            });
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: res.data.id } : m));
-        } catch (err) { setMessages(prev => prev.filter(m => m.id !== tempId)); }
+        } catch (err) {
+            setMessages(prev => prev.filter(m => m.id !== tempId));
+        }
     };
+
 
     const takePhoto = async () => {
         try {
@@ -128,6 +148,6 @@ export const useChat = (id: string | undefined, currentUser: any) => {
     return {
         conversation, messages, newMessageText, setNewMessageText, isContactOnline,
         isTyping, selectedImage, setSelectedImage, imageErrors, setImageErrors,
-        messagesEndRef, chatPartner, takePhoto, handleSend, socket
+        messagesEndRef, chatPartner, takePhoto, handleSend, replyTo, setReplyTo, socket
     };
 };

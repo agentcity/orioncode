@@ -3,6 +3,7 @@ import { Box, Paper, Typography, CircularProgress } from '@mui/material';
 import DoneIcon from '@mui/icons-material/Done';
 import DoneAllIcon from '@mui/icons-material/DoneAll';
 import ImageNotSupportedIcon from '@mui/icons-material/ImageNotSupported';
+import {MessageTxt} from "./MessageText";
 
 interface MessageListProps {
     messages: any[];
@@ -12,6 +13,9 @@ interface MessageListProps {
     setImageErrors: React.Dispatch<React.SetStateAction<Record<string, boolean>>>;
     setSelectedImage: (url: string | null) => void;
     messagesEndRef: React.RefObject<HTMLDivElement | null>;
+    setNewMessageText: (text: string) => void;
+    replyTo: any;
+    setReplyTo: (msg: any) => void;
 }
 
 export const MessageList: React.FC<MessageListProps> = ({
@@ -21,7 +25,10 @@ export const MessageList: React.FC<MessageListProps> = ({
     imageErrors,
     setImageErrors,
     setSelectedImage,
-    messagesEndRef
+    messagesEndRef,
+    setNewMessageText,
+    replyTo,
+    setReplyTo
 }) => {
     const serverBase = (process.env.REACT_APP_API_URL || 'http://localhost:8080/api').replace(/\/api$/, '');
 
@@ -51,6 +58,7 @@ export const MessageList: React.FC<MessageListProps> = ({
                             borderRadius: isMine ? '18px 18px 4px 18px' : '18px 18px 18px 4px',
                             wordBreak: 'break-word'
                         }}>
+
                             {imageSrc && (
                                 <Box
                                     sx={{ position: 'relative', lineHeight: 0, cursor: 'pointer' }}
@@ -86,7 +94,19 @@ export const MessageList: React.FC<MessageListProps> = ({
                                 </Box>
                             )}
                             {msg.text && (msg.text !== '📷 Фото' || !imageSrc) && (
-                                <Typography variant="body1" sx={{ mt: imageSrc ? 1 : 0, px: 0.5 }}>{msg.text}</Typography>
+                                <MessageTxt
+                                    msg={msg}
+                                    isMine={isMine}
+                                    // Просто передаем всё сообщение в состояние "ответа"
+                                    onReply={(message) => {
+                                        setReplyTo(message);
+                                        // Фокусируемся на поле ввода, чтобы сразу начать писать
+                                        const input = document.querySelector('textarea, input[type="text"]');
+                                        if (input instanceof HTMLElement) input.focus();
+                                    }}
+                                />
+
+
                             )}
                             <Box sx={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', mt: 0.5, px: 0.5 }}>
                                 <Typography variant="caption" sx={{ opacity: 0.6, mr: 0.5, fontSize: '0.75rem' }}>

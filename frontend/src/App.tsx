@@ -6,8 +6,7 @@ import DashboardPage from './pages/DashboardPage';
 import OfflineStub from './components/OfflineStub';
 import axiosClient from './api/axiosClient';
 import LoadingScreen from './components/LoadingScreen';
-import { LocalNotifications } from '@capacitor/local-notifications';
-import { CircularProgress, Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
+import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useWebSocket } from './hooks/useWebSocket';
 
 
@@ -33,20 +32,6 @@ const AppContent: React.FC = () => {
     // ГЛОБАЛЬНЫЙ СОКЕТ: инициализируется сразу после логина
     // Мы передаем только userId, чтобы сервер пометил нас как ONLINE
     useWebSocket(undefined, user?.id);
-
-    useEffect(() => {
-        const requestPushPermission = async () => {
-            // Проверяем, на мобилке мы или в браузере
-            if (navigator.userAgent.includes('Android')) {
-                const status = await LocalNotifications.requestPermissions();
-                console.log('Permission status:', status);
-            } else if ('Notification' in window) {
-                Notification.requestPermission();
-            }
-        };
-
-        requestPushPermission();
-    }, []);
 
     useEffect(() => {
         // 1. Проверяем наличие объекта Notification в глобальной области видимости
