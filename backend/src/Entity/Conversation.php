@@ -10,7 +10,7 @@ use Doctrine\ORM\Mapping as ORM;
 use Symfony\Component\Serializer\Annotation\Groups;
 use DateTimeImmutable;
 
-#[ORM\Entity(repositoryClass: ConversationRepository::class)]
+#[ORM\Entity(repositoryClass: \App\Repository\ConversationRepository::class)]
 #[ORM\Table(name: 'conversations')]
 // ИНДЕКСЫ ВЫНОСИМ ОТДЕЛЬНО
 #[ORM\Index(columns: ['account_id'], name: 'idx_conversation_account')]

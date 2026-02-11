@@ -10,7 +10,7 @@ use Symfony\Component\Serializer\Annotation\Groups;
 use Symfony\Component\Uid\Uuid;
 use DateTimeImmutable;
 
-#[ORM\Entity(repositoryClass: UserRepository::class)]
+#[ORM\Entity(repositoryClass: \App\Repository\UserRepository::class)]
 #[ORM\Table(name: 'users')]
 #[ORM\Index(columns: ['email'], name: 'idx_user_email')]
 #[ORM\Index(columns: ['is_active'], name: 'idx_user_is_active')]

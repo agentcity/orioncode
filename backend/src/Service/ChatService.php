@@ -112,7 +112,7 @@ class ChatService
         return $message;
     }
 
-    private function generateAiReply(Conversation $conversation, string $userText)
+    public function generateAiReply(Conversation $conversation, string $userText)
     {
         // 1. Собираем историю сообщений для контекста
         $history = [];

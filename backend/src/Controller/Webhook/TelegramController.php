@@ -29,10 +29,33 @@ class TelegramController extends AbstractController {
         $conv = $em->getRepository(Conversation::class)->findOneBy(['contact' => $contact, 'account' => $account])
             ?? (new Conversation())->setContact($contact)->setAccount($account)->setType('telegram')->setStatus('active');
 
-        if (!$contact->getId()) $em->persist($contact);
-        if (!$conv->getId()) $em->persist($conv);
 
-        $msg = (new Message())->setConversation($conv)->setText($text)->setDirection('inbound')->setSentAt(new \DateTimeImmutable());
+        // 1. Сначала принудительно сохраняем контакт, если он новый
+        if ($em->getUnitOfWork()->getEntityState($contact) === \Doctrine\ORM\UnitOfWork::STATE_NEW) {
+            $em->persist($contact);
+        }
+
+        // 2. Затем принудительно сохраняем беседу, если она новая
+        if ($em->getUnitOfWork()->getEntityState($conv) === \Doctrine\ORM\UnitOfWork::STATE_NEW) {
+            // Привязываем главного менеджера (владельца аккаунта "Атаманский Двор")
+            if ($account->getUser()) {
+                $conv->setAssignedTo($account->getUser());
+            }
+
+            $em->persist($conv);
+        }
+
+
+
+        // 3. Теперь создаем и сохраняем сообщение
+
+        $msg = (new Message())
+            ->setConversation($conv)
+            ->setText($text)
+            ->setDirection('inbound')
+            ->setSenderType('contact')
+            ->setSentAt(new \DateTimeImmutable());
+
         $em->persist($msg);
         $em->flush();
 

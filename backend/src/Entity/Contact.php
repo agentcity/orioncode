@@ -9,7 +9,7 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
-#[ORM\Entity(repositoryClass: ContactRepository::class)]
+#[ORM\Entity(repositoryClass: \App\Repository\ContactRepository::class)]
 #[ORM\Table(name: 'contacts')]
 // Выносим индекс в отдельный атрибут под таблицей
 #[ORM\Index(columns: ['main_name'], name: 'idx_contact_main_name')]

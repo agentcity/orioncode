@@ -25,4 +25,3 @@ api_index:
 webhooks:
     resource: ../src/Controller/Webhook/
     type: attribute
-    prefix: /api/webhooks
