@@ -3445,3 +3445,28 @@
 2026/02/11 16:15:48 [notice] 1#1: start worker process 23
 2026/02/11 16:15:48 [notice] 1#1: start worker process 24
 2026/02/11 16:15:48 [notice] 1#1: start worker process 25
+2026/02/11 20:35:15 [error] 22#22: *616 upstream timed out (110: Operation timed out) while reading response header from upstream, client: 172.18.0.1, server: _, request: "POST /api/login HTTP/1.1", upstream: "fastcgi://172.18.0.4:9000", host: "192.168.1.14:8080", referrer: "http://192.168.1.14:3001/"
+2026/02/11 20:38:22 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:22 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:23 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:23 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:25 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:27 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:30 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:37 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:38:50 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:39:16 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:40:09 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:41:10 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:42:10 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/11 20:55:07 [notice] 1#1: using the "epoll" event method
+2026/02/11 20:55:07 [notice] 1#1: nginx/1.26.3
+2026/02/11 20:55:07 [notice] 1#1: built by gcc 13.2.1 20240309 (Alpine 13.2.1_git20240309) 
+2026/02/11 20:55:07 [notice] 1#1: OS: Linux 5.15.49-linuxkit-pr
+2026/02/11 20:55:07 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/02/11 20:55:07 [notice] 1#1: start worker processes
+2026/02/11 20:55:07 [notice] 1#1: start worker process 21
+2026/02/11 20:55:07 [notice] 1#1: start worker process 22
+2026/02/11 20:55:07 [notice] 1#1: start worker process 23
+2026/02/11 20:55:07 [notice] 1#1: start worker process 24
+2026/02/11 20:55:07 [notice] 1#1: start worker process 25

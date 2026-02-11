@@ -8,6 +8,7 @@ import axiosClient from './api/axiosClient';
 import LoadingScreen from './components/LoadingScreen';
 import { Box, CssBaseline, ThemeProvider, createTheme } from '@mui/material';
 import { useWebSocket } from './hooks/useWebSocket';
+import { LocalNotifications } from '@capacitor/local-notifications';
 
 
 const theme = createTheme({
@@ -33,6 +34,21 @@ const AppContent: React.FC = () => {
     // Мы передаем только userId, чтобы сервер пометил нас как ONLINE
     useWebSocket(undefined, user?.id);
 
+
+    useEffect(() => {
+        const requestPushPermission = async () => {
+            // Проверяем, на мобилке мы или в браузере
+            if (navigator.userAgent.includes('Android')) {
+                const status = await LocalNotifications.requestPermissions();
+                console.log('Permission status:', status);
+            } else if ('Notification' in window) {
+                Notification.requestPermission();
+            }
+        };
+
+        requestPushPermission();
+    }, []);
+
     useEffect(() => {
         // 1. Проверяем наличие объекта Notification в глобальной области видимости
         if (typeof window !== 'undefined' && 'Notification' in window) {
@@ -43,6 +59,7 @@ const AppContent: React.FC = () => {
             console.log("Этот браузер не поддерживает системные уведомления");
         }
     }, []);
+
 
     useEffect(() => {
         if ('serviceWorker' in navigator) {

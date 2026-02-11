@@ -11,7 +11,7 @@
 
 Создай аккаунт в базе (получи его UUID).
 Установи вебхук (выполни в браузере):
-https://api.telegram.org/<ТОКЕН_БОТА>/setWebhook?url=https://ТВОЙ_ДОМЕН/api/webhooks/telegram/<UUID_АККАУНТА>
+https://api.telegram.org/bot<ТОКЕН_БОТА>/setWebhook?url=https://ТВОЙ_ДОМЕН/api/webhooks/telegram/<UUID_АККАУНТА>
 Должно ответить: {"ok":true,"result":true,"description":"Webhook was set"}.
 Напиши боту в Telegram.
 Смотри в консоль браузера: Должно прилететь событие сокета, и в списке чатов появится новый контакт.

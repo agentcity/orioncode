@@ -71,6 +71,12 @@ dev-build: ## Пересобрать локальные контейнеры (с
 dev-routes: ## Посмотреть роуты Symfony (локально)
 	$(DC_DEV) exec orion_backend php bin/console debug:router
 
+dev-docker-claean: ## Очистка от мусор для освобождения мпеста
+	docker builder prune -a -f
+	docker system prune -a --volumes -f
+
+
+
 # Очистка кэша бэкенда
 dev-cache-clear:
 	$(DC_DEV) exec orion_backend php bin/console cache:clear
@@ -357,6 +363,33 @@ dev-db-restore: ## Распаковать и накатить последний
 	@ls -t backups/*.sql.gz | head -n 1 | xargs -I {} sh -c 'gunzip -c {} | $(DC_DEV) exec -T orion_db psql -U app_user -d app_db'
 	@echo "✅ Локальная база синхронизирована с продом!"
 
+DB_CMD=docker exec orion_db_prod psql -U orion_admin -d orion_db -c
+
+## --- FULL SYSTEM STATUS ---
+prod-db-status:
+	@echo "--- ТАБЛИЦЫ ---"
+	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c '\dt+'"
+	@echo "\n--- СООБЩЕНИЯ (ReplyTo) ---"
+	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c 'SELECT id, left(text, 40), reply_to_id, sent_at FROM messages ORDER BY sent_at DESC LIMIT 5;'"
+	@echo "\n--- АККАУНТЫ (Telegram Token) ---"
+	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, credentials->>'telegram_token' as token, status FROM accounts;\""
+	@echo "\n--- AI ЮЗЕР (Орион Кот) ---"
+	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, first_name, last_name, roles FROM users WHERE id = '00000000-0000-0000-0000-000000000000';\""
+
+prod-db-inspect:
+	@echo "--- [1] АККАУНТЫ (Клиенты и Токены) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, credentials->>'telegram_token' as token, status FROM accounts;\""
+	@echo "\n--- [2] ПОЛЬЗОВАТЕЛИ (Команда и Орион Кот) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, email, first_name, last_name, roles FROM users ORDER BY created_at DESC LIMIT 10;\""
+
+	@echo "\n--- [3] КОНТАКТЫ (Клиенты из мессенджеров) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, main_name, source, external_id, account_id FROM contacts LIMIT 10;\""
+
+	@echo "\n--- [4] БЕСЕДЫ (Активность чатов) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, type, status, unread_count, left(last_message_at::text, 19) as last_msg FROM conversations ORDER BY last_message_at DESC LIMIT 5;\""
+
+	@echo "\n--- [5] СООБЩЕНИЯ (ReplyTo и Направление) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type FROM messages ORDER BY sent_at DESC LIMIT 10;\""
 
 # --- МОБИЛЬНОЕ ПРИЛОЖЕНИЕ (Capacitor / Android) ---
 

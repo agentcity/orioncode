@@ -23,6 +23,16 @@ class Contact
     #[ORM\Column(type: 'string', length: 255)]
     private string $mainName;
 
+    #[ORM\Column(type: 'string', length: 50, nullable: true)]
+    private ?string $source = null; // 'telegram', 'whatsapp'
+
+    #[ORM\Column(type: 'string', length: 255, nullable: true)]
+    private ?string $externalId = null; // ID пользователя в мессенджере
+
+    #[ORM\ManyToOne(targetEntity: Account::class)]
+    #[ORM\JoinColumn(name: 'account_id', referencedColumnName: 'id', nullable: true, onDelete: 'SET NULL')]
+    private ?Account $account = null;
+
     #[ORM\Column(type: 'string', nullable: true)]
     private ?string $firstName = null;
 
@@ -70,6 +80,16 @@ class Contact
         $this->mainName = $mainName;
         return $this;
     }
+
+    public function getSource(): ?string { return $this->source; }
+    public function setSource(?string $source): self { $this->source = $source; return $this; }
+
+    public function getExternalId(): ?string { return $this->externalId; }
+    public function setExternalId(?string $externalId): self { $this->externalId = $externalId; return $this; }
+
+    public function getAccount(): ?Account { return $this->account; }
+    public function setAccount(?Account $account): self { $this->account = $account; return $this; }
+
 
     public function getFirstName(): ?string
     {
