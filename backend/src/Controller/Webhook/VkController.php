@@ -57,7 +57,7 @@ class VkController extends AbstractController
             $em->flush();
 
             // Ответ ИИ и пуш в сокеты через ChatService
-            $chatService->generateAiReply($conv, $text);
+            //$chatService->generateAiReply($conv, $text);
 
             return new JsonResponse('ok');
         }
