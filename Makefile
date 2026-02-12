@@ -378,7 +378,7 @@ prod-db-status:
 
 prod-db-inspect:
 	@echo "--- [1] АККАУНТЫ (Клиенты и Токены) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, credentials->>'telegram_token' as token, status FROM accounts;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, credentials, status FROM accounts;\""
 	@echo "\n--- [2] ПОЛЬЗОВАТЕЛИ (Команда и Орион Кот) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, email, first_name, last_name, roles FROM users ORDER BY created_at DESC LIMIT 10;\""
 

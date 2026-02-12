@@ -35,8 +35,9 @@ security:
 
     # Note: Only the *first* matching rule is applied
     access_control:
+        # ПУБЛИЧНЫЙ ДОСТУП ДЛЯ ВЕБХУКОВ (Должно быть выше остальных /api)
+        - { path: ^/api/webhooks, roles: PUBLIC_ACCESS }
         - { path: ^/$, roles: PUBLIC_ACCESS } # Разрешаем корень API всем
-        - { path: ^/api/webhooks/telegram, roles: PUBLIC_ACCESS }
         - { path: ^/api/login, roles: PUBLIC_ACCESS }
         - { path: ^/api,       roles: IS_AUTHENTICATED_FULLY }
         - { path: ^/admin, roles: ROLE_ADMIN }

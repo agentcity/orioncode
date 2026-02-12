@@ -1,0 +1,56 @@
+<?php
+
+namespace App\Controller\Webhook;
+
+use App\Entity\{Account, Contact, Conversation, Message};
+use App\Service\ChatService;
+use Doctrine\ORM\EntityManagerInterface;
+use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\HttpFoundation\{JsonResponse, Request};
+use Symfony\Component\Routing\Attribute\Route;
+
+class VkController extends AbstractController
+{
+    #[Route('/api/webhooks/vk/{accountId}', methods: ['POST'])]
+    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService): JsonResponse
+    {
+        $account = $em->getRepository(Account::class)->find($accountId);
+        if (!$account) return $this->json(['error' => 'Account not found'], 404);
+
+        $data = json_decode($request->getContent(), true);
+
+        // 1. Подтверждение сервера (для настройки в кабинете ВК)
+        if ($data['type'] === 'confirmation') {
+            return new JsonResponse($account->getCredential('vk_confirmation_code'));
+        }
+
+        // 2. Обработка сообщения
+        if ($data['type'] === 'message_new') {
+            $msgData = $data['object']['message'];
+            $vkId = (string)$msgData['from_id'];
+            $text = $msgData['text'];
+
+            // Находим/Создаем контакт (Логика как в Telegram)
+            $contact = $em->getRepository(Contact::class)->findOneBy(['externalId' => $vkId, 'account' => $account])
+                ?? (new Contact())->setExternalId($vkId)->setSource('vk')->setMainName("VK User " . $vkId)->setAccount($account);
+
+            $conv = $em->getRepository(Conversation::class)->findOneBy(['contact' => $contact, 'account' => $account])
+                ?? (new Conversation())->setContact($contact)->setAccount($account)->setType('vk')->setStatus('active')->setAssignedTo($account->getUser());
+
+            $uow = $em->getUnitOfWork();
+            if ($uow->getEntityState($contact) === \Doctrine\ORM\UnitOfWork::STATE_NEW) $em->persist($contact);
+            if ($uow->getEntityState($conv) === \Doctrine\ORM\UnitOfWork::STATE_NEW) $em->persist($conv);
+
+            $msg = (new Message())->setConversation($conv)->setText($text)->setDirection('inbound')->setSenderType('contact')->setSentAt(new \DateTimeImmutable());
+            $em->persist($msg);
+            $em->flush();
+
+            // Ответ ИИ и пуш в сокеты через ChatService
+            $chatService->generateAiReply($conv, $text);
+
+            return new JsonResponse('ok');
+        }
+
+        return new JsonResponse('ok');
+    }
+}
