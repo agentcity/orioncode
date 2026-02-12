@@ -8,11 +8,12 @@ use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\HttpFoundation\{JsonResponse, Request};
 use Symfony\Component\Routing\Attribute\Route;
+use Symfony\Component\HttpFoundation\Response;
 
 class VkController extends AbstractController
 {
     #[Route('/api/webhooks/vk/{accountId}', methods: ['POST'])]
-    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService): JsonResponse
+    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService): \Symfony\Component\HttpFoundation\Response
     {
         $account = $em->getRepository(Account::class)->find($accountId);
         if (!$account) return $this->json(['error' => 'Account not found'], 404);
@@ -21,7 +22,11 @@ class VkController extends AbstractController
 
         // 1. Подтверждение сервера (для настройки в кабинете ВК)
         if ($data['type'] === 'confirmation') {
-            return new JsonResponse($account->getCredential('vk_confirmation_code'));
+            $code = $account->getCredential('vk_confirmation_code');
+            // Используем обычный Response вместо JsonResponse, чтобы не было кавычек!
+            return new \Symfony\Component\HttpFoundation\Response($code, 200, [
+                'Content-Type' => 'text/plain'
+            ]);
         }
 
         // 2. Обработка сообщения
