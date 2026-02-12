@@ -15,7 +15,8 @@ use Symfony\Component\Serializer\Annotation\Groups;
 // Выносим каждый индекс в свой атрибут:
 #[ORM\Index(columns: ['conversation_id'], name: 'idx_message_conversation')]
 #[ORM\Index(columns: ['sender_type'], name: 'idx_message_sender_type')]
-#[ORM\Index(columns: ['sender_id'], name: 'idx_message_sender_id')]
+#[ORM\Index(columns: ['manager_id'], name: 'idx_message_manager')]
+#[ORM\Index(columns: ['contact_id'], name: 'idx_message_contact')]
 #[ORM\Index(columns: ['direction'], name: 'idx_message_direction')]
 #[ORM\Index(columns: ['sent_at'], name: 'idx_message_sent_at')]
 #[ORM\HasLifecycleCallbacks]
@@ -32,8 +33,16 @@ class Message
     #[ORM\Column(type: 'string', length: 20)]
     private string $senderType;
 
-    #[ORM\Column(type: 'uuid', nullable: true)]
-    private ?UuidInterface $senderId = null;
+    // 1. Связь с Менеджером (User) - заполняется, когда пишем МЫ
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: "manager_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
+    private ?User $manager = null;
+
+    // 2. Связь с Клиентом (Contact) - заполняется, когда пишут НАМ (из ТГ/ВК)
+    #[ORM\ManyToOne(targetEntity: Contact::class)]
+    #[ORM\JoinColumn(name: "contact_id", referencedColumnName: "id", nullable: true, onDelete: "CASCADE")]
+    private ?Contact $contact = null;
+
 
     #[ORM\Column(type: 'string', nullable: true)]
     private ?string $externalId = null;
@@ -67,6 +76,7 @@ class Message
     #[ORM\JoinColumn(name: "reply_to_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
     private ?Message $replyTo = null;
 
+
     public function __construct()
     {
         $this->id = Uuid::uuid4();
@@ -87,6 +97,30 @@ class Message
     public function setConversation(Conversation $conversation): self
     {
         $this->conversation = $conversation;
+        return $this;
+    }
+
+    // --- Поле Manager (User) ---
+    public function getManager(): ?User
+    {
+        return $this->manager;
+    }
+
+    public function setManager(?User $manager): self
+    {
+        $this->manager = $manager;
+        return $this;
+    }
+
+    // --- Поле Contact ---
+    public function getContact(): ?Contact
+    {
+        return $this->contact;
+    }
+
+    public function setContact(?Contact $contact): self
+    {
+        $this->contact = $contact;
         return $this;
     }
 
@@ -177,6 +211,8 @@ class Message
         $this->status = $status;
         return $this;
     }
+
+
 
     public function getSentAt(): DateTimeImmutable
     {

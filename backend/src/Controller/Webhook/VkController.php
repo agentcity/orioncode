@@ -37,9 +37,21 @@ class VkController extends AbstractController
 
             // Если ВК прислал данные профиля (иногда бывает в расширенных хуках)
             // Или просто оставляем заглушку, но помечаем как ВК-клиент
-            $firstName = $data['object']['user']['first_name'] ?? 'Клиент';
-            $lastName = $data['object']['user']['last_name'] ?? 'ВК';
-            $name = $firstName . ' ' . $lastName;
+            $firstName = 'Клиент';
+            $lastName = 'ВК';
+
+            // Попробуем вытащить имя из вложенного объекта 'profiles', который ВК иногда шлет
+            if (!empty($data['object']['profiles'])) {
+                foreach ($data['object']['profiles'] as $profile) {
+                    if ((string)$profile['id'] === $vkId) {
+                        $firstName = $profile['first_name'] ?? 'Клиент';
+                        $lastName = $profile['last_name'] ?? 'ВК';
+                        break;
+                    }
+                }
+            }
+
+            $name = trim($firstName . ' ' . $lastName);
 
             // Находим/Создаем контакт (Логика как в Telegram)
             $contact = $em->getRepository(Contact::class)->findOneBy(['externalId' => $vkId, 'account' => $account])
@@ -52,7 +64,14 @@ class VkController extends AbstractController
             if ($uow->getEntityState($contact) === \Doctrine\ORM\UnitOfWork::STATE_NEW) $em->persist($contact);
             if ($uow->getEntityState($conv) === \Doctrine\ORM\UnitOfWork::STATE_NEW) $em->persist($conv);
 
-            $msg = (new Message())->setConversation($conv)->setText($text)->setDirection('inbound')->setSenderType('contact')->setSentAt(new \DateTimeImmutable());
+            $msg = (new Message())
+                ->setConversation($conv)
+                ->setText($text)
+                ->setDirection('inbound')
+                ->setSenderType('contact')
+                ->setContact($contact)
+                ->setManager(null)
+                ->setSentAt(new \DateTimeImmutable());
             $em->persist($msg);
             $em->flush();
 

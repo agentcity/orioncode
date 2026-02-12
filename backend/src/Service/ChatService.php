@@ -42,6 +42,8 @@ class ChatService
         $message->setText($data['text'] ?? '');
         $message->setDirection('outgoing');
         $message->setSenderType('user');
+        $message->setManager($user);    // Записываем в manager_id
+        $message->setContact(null);      // Обнуляем contact_id
         $message->setStatus('sent');
         $message->setSentAt(new \DateTimeImmutable());
         $message->setIsRead(true);
@@ -52,6 +54,10 @@ class ChatService
 
         $payload = $message->getPayload() ?? [];
         $payload['senderId'] = $user->getId()->toString();
+        $payload['senderName'] = $user->getFirstName();
+        $payload['senderLastName'] = $user->getLastName();
+        $payload['fullName'] = trim($user->getFirstName() . ' ' . $user->getLastName());
+
         $message->setPayload($payload);
 
 
@@ -126,7 +132,7 @@ class ChatService
         $rawMessages = $this->messageRepository->findBy(
             ['conversation' => $conversation],
             ['sentAt' => 'DESC'],
-            11 // Берем 11, чтобы включая текущее было около 10
+            31 // Берем 31, чтобы включая текущее было около 30
         );
 
         // Переворачиваем, чтобы было от старых к новым
@@ -150,6 +156,15 @@ class ChatService
         $aiMsg->setText($aiText);
         $aiMsg->setDirection('inbound');
         $aiMsg->setSenderType('bot');
+        // Находим сущность бота в таблице users по его фиксированному UUID
+        $botUser = $this->em->getRepository(\App\Entity\User::class)->find(self::AI_UUID);
+
+        if ($botUser) {
+            $aiMsg->setManager($botUser); // Записываем ID бота в manager_id
+        }
+
+        $aiMsg->setContact(null);
+
         $aiMsg->setStatus('delivered');
         $aiMsg->setSentAt(new \DateTimeImmutable());
         $aiMsg->setPayload(['senderId' => self::AI_UUID]);

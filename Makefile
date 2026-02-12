@@ -389,7 +389,38 @@ prod-db-inspect:
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, type, status, unread_count, left(last_message_at::text, 19) as last_msg FROM conversations ORDER BY last_message_at DESC LIMIT 5;\""
 
 	@echo "\n--- [5] СООБЩЕНИЯ (ReplyTo и Направление) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type FROM messages ORDER BY sent_at DESC LIMIT 10;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type, conversation_id, sender_id FROM messages ORDER BY sent_at DESC LIMIT 10;\""
+
+
+# Удаление нескольких сообщений по ID на проде
+# Пример: make prod-msgs-delete IDS=id1,id2,id3
+prod-msgs-delete:
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"DELETE FROM messages WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);\""
+
+# Удаление нескольких сообщений по ID на локалке
+# Пример: make dev-msgs-delete IDS=id1,id2,id3
+dev-msgs-delete:
+	@docker exec orion_db psql -U app_user -d app_db -c "DELETE FROM messages WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);"
+
+# Удаление бесед по IDS на проде
+# Пример: make prod-convs-delete IDS=uuid1,uuid2
+prod-convs-delete:
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"DELETE FROM conversations WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);\""
+
+# Удаление бесед по IDS на локалке
+# Пример: make dev-convs-delete IDS=uuid1,uuid2
+dev-convs-delete:
+	@docker exec orion_db psql -U app_user -d app_db -c "DELETE FROM conversations WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);"
+
+# Удаление ВСЕХ сообщений конкретной беседы на проде
+# Пример: make prod-msg-clear-conv CONV_ID=uuid
+prod-msg-clear-conv:
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"DELETE FROM messages WHERE conversation_id = '$(CONV_ID)';\""
+
+# Удаление ВСЕХ сообщений конкретной беседы на локалке
+# Пример: make dev-msg-clear-conv CONV_ID=uuid
+dev-msg-clear-conv:
+	@docker exec orion_db psql -U app_user -d app_db -c "DELETE FROM messages WHERE conversation_id = '$(CONV_ID)';"
 
 # --- МОБИЛЬНОЕ ПРИЛОЖЕНИЕ (Capacitor / Android) ---
 
