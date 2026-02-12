@@ -207,7 +207,9 @@ class ChatService
             if (!$account || !$contact) return;
 
             // Ищем токен: 'telegram_token', 'whatsapp_token' и т.д.
-            $token = $account->getCredential($type . '_token');
+
+            $allCreds = $account->getCredentials();
+            $token = $allCreds[$type . '_token'] ?? null;
             $externalId = $contact->getExternalId();
 
             if ($token && $externalId) {

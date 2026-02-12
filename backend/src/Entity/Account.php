@@ -111,7 +111,14 @@ class Account
 
     public function getCredentials(): array
     {
-        return $this->credentials;
+        $credentials = $this->getCredentials();
+
+        // Если это массив, ищем ключ
+        if (is_array($credentials) && isset($credentials[$key])) {
+            return $credentials[$key];
+        }
+
+        return $default;
     }
 
     public function setCredentials(array $credentials): self
