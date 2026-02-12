@@ -112,7 +112,7 @@ class ChatService
         if ($message->getSenderType() !== 'bot') {
             $targetId = $this->resolveTargetId($conversation, $user);
             if ($targetId === self::AI_UUID) {
-                $this->generateAiReply($conversation, $text);
+                $this->generateAiReply($conversation, $data['text'] ?? '');
             }
         }
 
@@ -207,9 +207,8 @@ class ChatService
             if (!$account || !$contact) return;
 
             // Ищем токен: 'telegram_token', 'whatsapp_token' и т.д.
+            $token = $account->getCredential($type . '_token') ?? null;
 
-            $allCreds = $account->getCredentials();
-            $token = $allCreds[$type . '_token'] ?? null;
             $externalId = $contact->getExternalId();
 
             if ($token && $externalId) {

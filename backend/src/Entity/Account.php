@@ -109,13 +109,19 @@ class Account
         return $this;
     }
 
+    // 1. Этот метод просто возвращает свойство из базы
     public function getCredentials(): array
     {
-        $credentials = $this->getCredentials();
+        return $this->credentials ?? [];
+    }
 
-        // Если это массив, ищем ключ
-        if (is_array($credentials) && isset($credentials[$key])) {
-            return $credentials[$key];
+// 2. А этот метод вытаскивает конкретный токен (то, что мы хотели для Телеграма)
+    public function getCredential(string $key, $default = null)
+    {
+        $all = $this->getCredentials(); // Вызываем метод выше
+
+        if (is_array($all) && isset($all[$key])) {
+            return $all[$key];
         }
 
         return $default;

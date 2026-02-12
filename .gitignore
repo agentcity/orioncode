@@ -19,4 +19,4 @@ backend/.phpunit.result.cache
 backend/.php-cs-fixer.cache
 backend/var/log/
 backups/
-nginx/logs
+nginx/logs/
