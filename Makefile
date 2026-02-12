@@ -11,7 +11,7 @@ BASE_DIR = /var/www/orioncode
 RELEASE_NAME = $(shell date +%Y.%m.%d-%H.%M.%S)
 RELEASE_DIR = $(BASE_DIR)/releases/$(RELEASE_NAME)
 CURRENT_DIR = $(BASE_DIR)/current
-RSYNC_EXCLUDE = --exclude='.git' --exclude='.idea' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='.env' --exclude='backend/public/uploads' --exclude='frontend/mobile'
+RSYNC_EXCLUDE = --exclude='.git' --exclude='.idea' --exclude='node_modules' --exclude='vendor' --exclude='var/cache' --exclude='/backend/var/cache' --exclude='.env' --exclude='backend/public/uploads' --exclude='frontend/mobile'
 DC_PROD = docker compose -p orion_prod
 DC_DEV = docker-compose
 DC_PROD_CMD = docker compose -p orion_prod -f docker-compose.prod.yml
@@ -366,7 +366,7 @@ dev-db-restore: ## Распаковать и накатить последний
 DB_CMD=docker exec orion_db_prod psql -U orion_admin -d orion_db -c
 
 ## --- FULL SYSTEM STATUS ---
-prod-db-status:
+prod-db-status-table:
 	@echo "--- ТАБЛИЦЫ ---"
 	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c '\dt+'"
 	@echo "\n--- СООБЩЕНИЯ (ReplyTo) ---"
@@ -389,7 +389,7 @@ prod-db-inspect:
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, type, status, unread_count, left(last_message_at::text, 19) as last_msg FROM conversations ORDER BY last_message_at DESC LIMIT 5;\""
 
 	@echo "\n--- [5] СООБЩЕНИЯ (ReplyTo и Направление) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type, conversation_id, sender_id FROM messages ORDER BY sent_at DESC LIMIT 10;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type, conversation_id, manager_id, contact_id FROM messages ORDER BY sent_at DESC LIMIT 10;\""
 
 
 # Удаление нескольких сообщений по ID на проде
@@ -421,6 +421,17 @@ prod-msg-clear-conv:
 # Пример: make dev-msg-clear-conv CONV_ID=uuid
 dev-msg-clear-conv:
 	@docker exec orion_db psql -U app_user -d app_db -c "DELETE FROM messages WHERE conversation_id = '$(CONV_ID)';"
+
+# Удаление контактов по IDS на проде
+# Пример: make prod-contacts-delete IDS=uuid1,uuid2
+prod-contacts-delete:
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"DELETE FROM contacts WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);\""
+
+# Удаление контактов по IDS на локалке
+# Пример: make dev-contacts-delete IDS=uuid1,uuid2
+dev-contacts-delete:
+	@docker exec orion_db psql -U app_user -d app_db -c "DELETE FROM contacts WHERE id IN (SELECT unnest(string_to_array('$(IDS)', ','))::uuid);"
+
 
 # --- МОБИЛЬНОЕ ПРИЛОЖЕНИЕ (Capacitor / Android) ---
 

@@ -3510,3 +3510,37 @@
 2026/02/12 00:51:55 [notice] 1#1: start worker process 23
 2026/02/12 00:51:55 [notice] 1#1: start worker process 24
 2026/02/12 00:51:55 [notice] 1#1: start worker process 25
+2026/02/12 21:46:18 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:19 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:19 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:20 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:21 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:23 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:27 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:33 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:46:47 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:47:13 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:48:04 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:49:05 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:39 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:40 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:40 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:41 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:42 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:43 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:47 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:53:54 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:54:07 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:54:33 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:55:24 [emerg] 1#1: host not found in upstream "orion_backend" in /etc/nginx/conf.d/default.conf:46
+2026/02/12 21:56:28 [notice] 1#1: using the "epoll" event method
+2026/02/12 21:56:28 [notice] 1#1: nginx/1.26.3
+2026/02/12 21:56:28 [notice] 1#1: built by gcc 13.2.1 20240309 (Alpine 13.2.1_git20240309) 
+2026/02/12 21:56:28 [notice] 1#1: OS: Linux 5.15.49-linuxkit-pr
+2026/02/12 21:56:28 [notice] 1#1: getrlimit(RLIMIT_NOFILE): 1048576:1048576
+2026/02/12 21:56:28 [notice] 1#1: start worker processes
+2026/02/12 21:56:28 [notice] 1#1: start worker process 21
+2026/02/12 21:56:28 [notice] 1#1: start worker process 22
+2026/02/12 21:56:28 [notice] 1#1: start worker process 23
+2026/02/12 21:56:28 [notice] 1#1: start worker process 24
+2026/02/12 21:56:28 [notice] 1#1: start worker process 25

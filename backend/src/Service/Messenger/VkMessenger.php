@@ -37,6 +37,22 @@ class VkMessenger implements MessengerInterface
         }
     }
 
+    public function getUserData(string $vkId, string $token): array
+    {
+        $response = $this->httpClient->request('GET', 'https://api.vk.com/method/users.get', [
+            'query' => [
+                'user_ids' => $vkId,
+                'access_token' => $token,
+                'v' => '5.199',
+                'fields' => 'photo_50' // Сразу возьмем и аватарку!
+            ]
+        ]);
+
+
+        $data = $response->toArray();
+
+        return $data['response'][0] ?? [];
+    }
 
     /**
      * Возвращаем строковый идентификатор мессенджера

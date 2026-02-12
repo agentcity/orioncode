@@ -78,8 +78,7 @@ class VkWebhookTest extends WebTestCase
         );
 
         $this->assertResponseIsSuccessful();
-        // VkController возвращает JsonResponse('ok'), поэтому проверяем с кавычками
-        $this->assertEquals('"ok"', $client->getResponse()->getContent(), 'ВК ждет ok после получения сообщения');
+        $this->assertEquals('ok', $client->getResponse()->getContent(), 'ВК ждет ok после получения сообщения');
 
 
         // 4. ЭТАП 3: ПРОВЕРКА В БАЗЕ ДАННЫХ

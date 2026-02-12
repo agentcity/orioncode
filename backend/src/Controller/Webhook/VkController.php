@@ -13,12 +13,19 @@ use Symfony\Component\HttpFoundation\Response;
 class VkController extends AbstractController
 {
     #[Route('/api/webhooks/vk/{accountId}', methods: ['POST'])]
-    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService): \Symfony\Component\HttpFoundation\Response
+    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService, \App\Service\Messenger\VkMessenger $vkMessenger): \Symfony\Component\HttpFoundation\Response
     {
         $account = $em->getRepository(Account::class)->find($accountId);
         if (!$account) return $this->json(['error' => 'Account not found'], 404);
 
         $data = json_decode($request->getContent(), true);
+
+//        //--- ЛОГЕР ДЛЯ ОТЛАДКИ 2026 ---
+//        file_put_contents(
+//            $this->getParameter('kernel.logs_dir') . '/vk_webhook.log',
+//            "[" . date('Y-m-d H:i:s') . "] Payload: " . json_encode($data, JSON_UNESCAPED_UNICODE) . "\n",
+//            FILE_APPEND
+//        );
 
         // 1. Подтверждение сервера (для настройки в кабинете ВК)
         if ($data['type'] === 'confirmation') {
@@ -35,27 +42,40 @@ class VkController extends AbstractController
             $vkId = (string)$msgData['from_id'];
             $text = $msgData['text'];
 
-            // Если ВК прислал данные профиля (иногда бывает в расширенных хуках)
-            // Или просто оставляем заглушку, но помечаем как ВК-клиент
-            $firstName = 'Клиент';
-            $lastName = 'ВК';
+            $contact = $em->getRepository(Contact::class)->findOneBy(['externalId' => $vkId, 'account' => $account]);
 
-            // Попробуем вытащить имя из вложенного объекта 'profiles', который ВК иногда шлет
-            if (!empty($data['object']['profiles'])) {
-                foreach ($data['object']['profiles'] as $profile) {
-                    if ((string)$profile['id'] === $vkId) {
-                        $firstName = $profile['first_name'] ?? 'Клиент';
-                        $lastName = $profile['last_name'] ?? 'ВК';
-                        break;
-                    }
+
+            if (!$contact) {
+
+                // Если контакта нет, запрашиваем имя через API ВК
+                $vkToken = $account->getCredential('vk_token');
+                // Получаем сервис мессенджера (убедись, что добавил его в аргументы handle или через inject)
+                $userData = $vkMessenger->getUserData($vkId, $vkToken);
+
+                $firstName = $userData['first_name'] ?? 'Клиент';
+                $lastName  = $userData['last_name'] ?? 'ВК';
+                $fullName = trim($firstName . ' ' . $lastName);
+
+
+//            //--- ЛОГЕР ДЛЯ ОТЛАДКИ 2026 ---
+//            file_put_contents(
+//                $this->getParameter('kernel.logs_dir') . '/vk_webhook.log',
+//                "[" . date('Y-m-d H:i:s') . "] Payload: " . json_encode($userData, JSON_UNESCAPED_UNICODE) . "\n",
+//                FILE_APPEND
+//            );
+
+                $contact = (new Contact())
+                    ->setExternalId($vkId)
+                    ->setSource('vk')
+                    ->setMainName($fullName)
+                    ->setAccount($account);
+
+                // Если есть аватарка, сохраним её в payload
+                if (!empty($userData['photo_50'])) {
+                    $contact->setPayload(['avatar' => $userData['photo_50']]);
                 }
             }
 
-            $name = trim($firstName . ' ' . $lastName);
-
-            // Находим/Создаем контакт (Логика как в Telegram)
-            $contact = $em->getRepository(Contact::class)->findOneBy(['externalId' => $vkId, 'account' => $account])
-                ?? (new Contact())->setExternalId($vkId)->setSource('vk')->setMainName($name)->setAccount($account);
 
             $conv = $em->getRepository(Conversation::class)->findOneBy(['contact' => $contact, 'account' => $account])
                 ?? (new Conversation())->setContact($contact)->setAccount($account)->setType('vk')->setStatus('active')->setAssignedTo($account->getUser());
@@ -78,9 +98,13 @@ class VkController extends AbstractController
             // Ответ ИИ и пуш в сокеты через ChatService
             //$chatService->generateAiReply($conv, $text);
 
-            return new JsonResponse('ok');
-        }
+            return new \Symfony\Component\HttpFoundation\Response('ok', 200, [
+                'Content-Type' => 'text/plain'
+            ]);
 
-        return new JsonResponse('ok');
+        }
+        return new \Symfony\Component\HttpFoundation\Response('ok', 200, [
+            'Content-Type' => 'text/plain'
+        ]);
     }
 }
