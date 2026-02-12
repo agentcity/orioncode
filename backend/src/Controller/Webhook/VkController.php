@@ -35,9 +35,15 @@ class VkController extends AbstractController
             $vkId = (string)$msgData['from_id'];
             $text = $msgData['text'];
 
+            // Если ВК прислал данные профиля (иногда бывает в расширенных хуках)
+            // Или просто оставляем заглушку, но помечаем как ВК-клиент
+            $firstName = $data['object']['user']['first_name'] ?? 'Клиент';
+            $lastName = $data['object']['user']['last_name'] ?? 'ВК';
+            $name = $firstName . ' ' . $lastName;
+
             // Находим/Создаем контакт (Логика как в Telegram)
             $contact = $em->getRepository(Contact::class)->findOneBy(['externalId' => $vkId, 'account' => $account])
-                ?? (new Contact())->setExternalId($vkId)->setSource('vk')->setMainName("VK User " . $vkId)->setAccount($account);
+                ?? (new Contact())->setExternalId($vkId)->setSource('vk')->setMainName($name)->setAccount($account);
 
             $conv = $em->getRepository(Conversation::class)->findOneBy(['contact' => $contact, 'account' => $account])
                 ?? (new Conversation())->setContact($contact)->setAccount($account)->setType('vk')->setStatus('active')->setAssignedTo($account->getUser());

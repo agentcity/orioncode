@@ -20,12 +20,12 @@ class VkMessenger implements MessengerInterface
         }
 
         try {
-            $this->httpClient->request('POST', 'https://api.vk.com', [
+            $this->httpClient->request('POST', 'https://api.vk.com/method/messages.send', [
                 'query' => [
                     'peer_id' => $externalId,
                     'message' => $text,
                     'access_token' => $token,
-                    'v' => '5.131',
+                    'v' => '5.199',
                     'random_id' => rand(0, 2147483647)
                 ]
             ]);

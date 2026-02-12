@@ -159,7 +159,7 @@ class ChatService
 
         // Отправляем ответ ИИ в чат мессенджера внешней системы
         if ($conversation->getType() !== 'orion') {
-            $this->sendToExternalMessenger($conversation, $aiText);
+            //$this->sendToExternalMessenger($conversation, $aiText);
         }
 
         $this->broadcastToRedis($conversation, $aiMsg);
