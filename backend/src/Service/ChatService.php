@@ -194,7 +194,7 @@ class ChatService
         return $c->getContact() ? $c->getContact()->getId() : null;
     }
 
-// Добавь это тело метода в ChatService.php
+    // Добавь это тело метода в ChatService.php
     private function sendToExternalMessenger(Conversation $conversation, string $text): void
     {
         $type = $conversation->getType();

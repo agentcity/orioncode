@@ -9,7 +9,7 @@ class TelegramService implements MessengerInterface {
     public function sendMessage(string $externalId, string $text, ?string $token = null): bool {
         if (!$token) return false;
         try {
-            $this->httpClient->request('POST', "https://api.telegram.org{$token}/sendMessage", [
+            $this->httpClient->request('POST', "https://api.telegram.org/bot{$token}/sendMessage", [
                 'json' => ['chat_id' => $externalId, 'text' => $text]
             ]);
             return true;
