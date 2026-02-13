@@ -20,6 +20,26 @@ doctrine:
                 dir: '%kernel.project_dir%/src/Entity'
                 prefix: 'App\Entity'
                 alias: App
+            OrganizationModule:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Organization/Entity'
+                prefix: 'App\Organization\Entity'
+                alias: OrganizationModule
+            MessengerModule:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Messenger/Entity'
+                prefix: 'App\Messenger\Entity'
+                alias: MessengerModule
+            BillingModule:
+                is_bundle: false
+                type: attribute
+                dir: '%kernel.project_dir%/src/Billing/Entity'
+                prefix: 'App\Billing\Entity'
+                alias: BillingModule
+
+
         controller_resolver:
             auto_mapping: false
 

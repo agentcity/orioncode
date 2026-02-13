@@ -104,18 +104,21 @@ export const useChat = (id: string | undefined, currentUser: any) => {
 
     const [replyTo, setReplyTo] = useState<Message | null>(null); // Состояние для цитаты
 
-    const handleSend = async () => {
-        if (!newMessageText.trim() || !id) return;
-        const text = newMessageText;
-        const currentReply = replyTo; // Фиксируем текущую цитату
+// 1. Добавляем аргумент text 🚀
+    const handleSend = async (text: string) => {
+        // Проверяем пришедший текст и наличие id беседы
+        if (!text.trim() || !id) return;
 
-        setNewMessageText('');
-        setReplyTo(null); // Сбрасываем превью над инпутом
+        const currentReply = replyTo; // Фиксируем текущую цитату (она остается в стейте, это ок)
+
+        // ВАЖНО: Больше не вызываем setNewMessageText(''),
+        // так как MessageInput сам очистит свой реф после вызова этой функции.
+        setReplyTo(null); // Сбрасываем превью цитаты над инпутом
 
         const tempId = `temp-${Date.now()}`;
         const newMessage = {
             id: tempId,
-            text: text,
+            text: text, // Используем аргумент
             direction: 'outbound',
             status: 'sent',
             sentAt: new Date().toISOString(),
@@ -124,22 +127,27 @@ export const useChat = (id: string | undefined, currentUser: any) => {
             senderType: 'user',
             payload: {
                 senderId: currentUser?.id,
-                replyTo: currentReply ? { id: currentReply.id, text: currentReply.text } : null // Добавляем в payload
+                replyTo: currentReply ? { id: currentReply.id, text: currentReply.text } : null
             }
         } as Message;
 
+        // Оптимистичное обновление UI
         setMessages(prev => [...prev, newMessage]);
         setTimeout(scrollToBottom, 50);
 
         try {
-            // Отправляем на бэкенд вместе с данными о цитате
+            // Отправляем на бэкенд
             const res = await axiosClient.post(`/conversations/${id}/messages`, {
-                text,
-                replyToId: currentReply?.id // Бэкенд должен это сохранить
+                text: text, // Используем аргумент
+                replyToId: currentReply?.id
             });
+
+            // Заменяем временный ID на реальный из базы
             setMessages(prev => prev.map(m => m.id === tempId ? { ...m, id: res.data.id } : m));
         } catch (err) {
+            // Если ошибка — удаляем временное сообщение
             setMessages(prev => prev.filter(m => m.id !== tempId));
+            console.error("Ошибка отправки:", err);
         }
     };
 

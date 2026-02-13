@@ -6,14 +6,14 @@ use App\Entity\{Account, Contact, Conversation, Message};
 use App\Service\ChatService;
 use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
-use Symfony\Component\HttpFoundation\{JsonResponse, Request};
+use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\Routing\Attribute\Route;
 use Symfony\Component\HttpFoundation\Response;
 
 class VkController extends AbstractController
 {
     #[Route('/api/webhooks/vk/{accountId}', methods: ['POST'])]
-    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService, \App\Service\Messenger\VkMessenger $vkMessenger): \Symfony\Component\HttpFoundation\Response
+    public function handle(string $accountId, Request $request, EntityManagerInterface $em, ChatService $chatService, \App\Service\Messenger\VkMessenger $vkMessenger): Response
     {
         $account = $em->getRepository(Account::class)->find($accountId);
         if (!$account) return $this->json(['error' => 'Account not found'], 404);
@@ -31,7 +31,7 @@ class VkController extends AbstractController
         if ($data['type'] === 'confirmation') {
             $code = $account->getCredential('vk_confirmation_code');
             // Используем обычный Response вместо JsonResponse, чтобы не было кавычек!
-            return new \Symfony\Component\HttpFoundation\Response($code, 200, [
+            return new Response($code, 200, [
                 'Content-Type' => 'text/plain'
             ]);
         }
@@ -72,10 +72,12 @@ class VkController extends AbstractController
 
                 // Если есть аватарка, сохраним её в payload
                 if (!empty($userData['photo_50'])) {
-                    $contact->setPayload(['avatar' => $userData['photo_50']]);
+                    $contact->setAvatarUrl($userData['photo_50']);
+
+                    //И сохраняем в метаданные
+                    $contact->setMetadata(['avatar' => $userData['photo_50']]);
                 }
             }
-
 
             $conv = $em->getRepository(Conversation::class)->findOneBy(['contact' => $contact, 'account' => $account])
                 ?? (new Conversation())->setContact($contact)->setAccount($account)->setType('vk')->setStatus('active')->setAssignedTo($account->getUser());
@@ -98,12 +100,12 @@ class VkController extends AbstractController
             // Ответ ИИ и пуш в сокеты через ChatService
             //$chatService->generateAiReply($conv, $text);
 
-            return new \Symfony\Component\HttpFoundation\Response('ok', 200, [
+            return new Response('ok', 200, [
                 'Content-Type' => 'text/plain'
             ]);
 
         }
-        return new \Symfony\Component\HttpFoundation\Response('ok', 200, [
+        return new Response('ok', 200, [
             'Content-Type' => 'text/plain'
         ]);
     }

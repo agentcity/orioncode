@@ -1,3 +1,28 @@
+
+src/
+├── Billing/              # МОДУЛЬ ДЕНЕГ
+│   ├── Controller/       # PaymentWebhookController.php
+│   ├── Entity/           # Payment.php, Subscription.php
+│   ├── Service/          # TinkoffClient.php, InvoiceGenerator.php
+│   └── Repository/       # PaymentRepository.php
+│
+├── Messenger/            # МОДУЛЬ ОБЩЕНИЯ
+│   ├── Controller/       # VkController.php, TelegramController.php
+│   ├── Entity/           # Message.php, Conversation.php, Contact.php
+│   ├── Service/          # VkMessenger.php, ChatService.php
+│   └── Repository/       # MessageRepository.php
+│
+├── Organization/         # МОДУЛЬ СТРУКТУРЫ БИЗНЕСА
+│   ├── Entity/           # Organization.php, Account.php
+│   └── Service/          # AccessManager.php (права доступа)
+│
+└── AI/                   # МОДУЛЬ ИИ (Орион Кот)
+├── Service/          # AiModelInterface.php, PromptBuilder.php
+└── Entity/           # AiLog.php (логи затрат токенов)
+
+
+
+
 Телеграм бот для чатов.
 
 Как это работает (цепочка):

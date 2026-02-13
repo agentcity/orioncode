@@ -2,6 +2,7 @@
 
 namespace App\Entity;
 
+use App\Organization\Entity\Organization;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -9,7 +10,7 @@ use Ramsey\Uuid\Uuid;
 use Ramsey\Uuid\UuidInterface;
 use DateTimeImmutable;
 
-#[ORM\Entity]
+#[ORM\Entity(repositoryClass: \App\Repository\AccountRepository::class)]
 #[ORM\Table(name: 'accounts')]
 #[ORM\Index(columns: ['user_id'], name: 'idx_account_user')]
 #[ORM\Index(columns: ['type'], name: 'idx_account_type')]
@@ -21,15 +22,21 @@ class Account
     #[ORM\Column(type: 'uuid', unique: true)]
     private UuidInterface $id;
 
-    #[ORM\ManyToOne(targetEntity: User::class, inversedBy: 'accounts')]
-    #[ORM\JoinColumn(nullable: false, onDelete: 'CASCADE')]
-    private User $user;
-
     #[ORM\Column(type: 'string', length: 50)]
     private string $type;
 
     #[ORM\Column(type: 'string', length: 255)]
     private string $name;
+
+    // Организация (для команд)
+    #[ORM\ManyToOne(targetEntity: Organization::class, inversedBy: 'accounts')]
+    #[ORM\JoinColumn(nullable: true, onDelete: 'SET NULL')]
+    private ?Organization $organization = null;
+
+    // Владелец (для одиночек или как админ канала)
+    #[ORM\ManyToOne(targetEntity: User::class)]
+    #[ORM\JoinColumn(name: "user_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
+    private ?User $user = null;
 
     #[ORM\Column(type: 'string', nullable: true)]
     private ?string $externalId = null;
@@ -97,6 +104,18 @@ class Account
         $this->name = $name;
         return $this;
     }
+
+    public function getOrganization(): ?Organization
+    {
+        return $this->organization;
+    }
+
+    public function setOrganization(?Organization $organization): self
+    {
+        $this->organization = $organization;
+        return $this;
+    }
+
 
     public function getExternalId(): ?string
     {

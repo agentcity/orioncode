@@ -127,6 +127,12 @@ class ChatService
 
     public function generateAiReply(Conversation $conversation, string $userText)
     {
+
+//        if ($organization->getBalance() < 2.00) {
+//            return; // ИИ замолкает, пока нет денег
+//        }
+//        $organization->setBalance($organization->getBalance() - 2.00);
+
         // 1. Собираем историю сообщений для контекста
         $history = [];
         $rawMessages = $this->messageRepository->findBy(
@@ -184,8 +190,11 @@ class ChatService
     {
         try {
             $redis = RedisAdapter::createConnection($_ENV['REDIS_URL'] ?? 'redis://orion_redis:6379');
+            $account = $conversation->getAccount();
             $data = [
                 'conversationId' => $conversation->getId()->toString(),
+                'orgId' => $account->getOrganization()?->getId()->toString(),
+                'userId' => $account->getUser()->getId()->toString(), // 🚀 Для одиночек
                 'payload' => [
                     'id' => $message->getId()->toString(),
                     'text' => $message->getText(),

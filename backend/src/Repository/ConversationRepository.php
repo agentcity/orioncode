@@ -18,31 +18,40 @@ class ConversationRepository extends ServiceEntityRepository
     }
 
     /**
-     * Получить все беседы пользователя с подгрузкой контактов (оптимизация запроса)
-     *
-     * @param User $user
-     * @return Conversation[]
+     * ГЛАВНЫЙ МЕТОД: Находит все беседы, доступные пользователю.
+     * 1. Где он является владельцем (owner) аккаунта.
+     * 2. Где он состоит в организации, которой принадлежит аккаунт.
      */
-    public function findAllByAssignedUser(User $user): array
+    public function findAvailableConversations(User $user): array
     {
         return $this->createQueryBuilder('c')
-            ->addSelect('contact') // Делаем JOIN, чтобы избежать проблемы N+1 при получении имен контактов
-            ->leftJoin('c.contact', 'contact')
-            ->where('c.assignedTo = :user')
+            // Оптимизация: подгружаем данные аккаунта и контакта одним запросом (нет N+1)
+            ->addSelect('a', 'contact', 'org')
+            ->innerJoin('c.account', 'a')
+            ->innerJoin('c.contact', 'contact')
+            ->leftJoin('a.organization', 'org')
+            ->leftJoin('org.users', 'org_user')
+            // Условие доступа:
+            ->where('a.user = :user') // Личный аккаунт (используем поле user, как договорились)
+            ->orWhere('org_user.id = :userId') // Аккаунт организации
             ->setParameter('user', $user)
+            ->setParameter('userId', $user->getId())
             ->orderBy('c.lastMessageAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
 
     /**
-     * Поиск беседы по внешнему ID (например, ID из WhatsApp/Telegram)
+     * Поиск беседы по типу и внешнему ID (для вебхуков)
      */
     public function findByExternalId(string $type, string $externalId): ?Conversation
     {
-        return $this->findOneBy([
-            'type' => $type,
-            'externalId' => $externalId
-        ]);
+        return $this->createQueryBuilder('c')
+            ->where('c.type = :type')
+            ->andWhere('c.externalId = :externalId')
+            ->setParameter('type', $type)
+            ->setParameter('externalId', $externalId)
+            ->getQuery()
+            ->getOneOrNullResult();
     }
 }

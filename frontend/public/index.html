@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8" />
     <link rel="icon" href="%PUBLIC_URL%/favicon.ico" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="viewport" content="width=device-width, initial-scale=1, maximum-scale=1, user-scalable=no, viewport-fit=cover" />
     <meta name="theme-color" content="#000000" />
     <meta
       name="description"
@@ -51,6 +51,28 @@
         100% { transform: scale(1); opacity: 1; }
       }
     </style>
+    <script>
+      window.onerror = function(msg, url, line) {
+        alert("ОШИБКА JS: " + msg + "\nГде: " + url + "\nСтрока: " + line);
+      };
+      console.log("HTML загружен, ждем React...");
+    </script>
+    <script>
+      window.onerror = function(msg, url, line, col, error) {
+        var div = document.createElement('div');
+        div.style.position = 'fixed';
+        div.style.top = '0';
+        div.style.left = '0';
+        div.style.width = '100%';
+        div.style.backgroundColor = 'red';
+        div.style.color = 'white';
+        div.style.zIndex = '9999';
+        div.style.padding = '20px';
+        div.innerText = 'ОШИБКА SAFARI: ' + msg + '\nФайл: ' + url + '\nСтрока: ' + line;
+        document.body.appendChild(div);
+      };
+    </script>
+
   </head>
   <body>
     <noscript>Для работы Orion необходимо включить JavaScript.</noscript>

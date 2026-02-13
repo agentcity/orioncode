@@ -3,6 +3,7 @@
 namespace App\Entity;
 
 use App\Repository\UserRepository;
+use App\Organization\Entity\Organization;
 use Doctrine\ORM\Mapping as ORM;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
@@ -60,12 +61,16 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'sender', targetEntity: Message::class)]
     private Collection $messages;
 
+    #[ORM\ManyToMany(targetEntity: Organization::class, mappedBy: 'users')]
+    private Collection $organizations;
+
     public function __construct()
     {
         $this->id = Uuid::v4();
         $this->createdAt = new DateTimeImmutable();
         $this->updatedAt = new DateTimeImmutable();
         $this->messages = new ArrayCollection();
+        $this->organizations = new ArrayCollection();
     }
 
     #[ORM\PrePersist]
@@ -199,6 +204,23 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
      */
     public function getMessages(): Collection {
         return $this->messages;
+    }
+
+    /** @return Collection<int, Organization> */
+    public function getOrganizations(): Collection { return $this->organizations; }
+
+    public function addOrganization(Organization $organization): self
+    {
+        if (!$this->organizations->contains($organization)) {
+            $this->organizations->add($organization);
+        }
+        return $this;
+    }
+
+    public function removeOrganization(Organization $organization): self
+    {
+        $this->organizations->removeElement($organization);
+        return $this;
     }
 }
 

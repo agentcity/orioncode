@@ -26,64 +26,37 @@ const PrivateRoute: React.FC<{ children: React.ReactNode }> = ({ children }) => 
 };
 
 const AppContent: React.FC = () => {
-    const { isAuthenticated, loading, user} = useAuth();
+    const { isAuthenticated, loading, user } = useAuth();
     const [isOnline, setIsOnline] = useState(navigator.onLine);
     const [isServerAvailable, setIsServerAvailable] = useState(true);
 
-    // ГЛОБАЛЬНЫЙ СОКЕТ: инициализируется сразу после логина
-    // Мы передаем только userId, чтобы сервер пометил нас как ONLINE
+    // 1. СНАЧАЛА ВСЕ ХУКИ (БЕЗ УСЛОВИЙ ВЫШЕ) 🚀
     useWebSocket(undefined, user?.id);
-
 
     useEffect(() => {
         const requestPushPermission = async () => {
-            // Проверяем, на мобилке мы или в браузере
-            if (navigator.userAgent.includes('Android')) {
-                const status = await LocalNotifications.requestPermissions();
-                console.log('Permission status:', status);
-            } else if ('Notification' in window) {
-                Notification.requestPermission();
+            try {
+                if (navigator.userAgent.includes('Android')) {
+                    await LocalNotifications.requestPermissions();
+                } else if ('Notification' in window) {
+                    await Notification.requestPermission();
+                }
+            } catch (e) {
+                console.warn("Push permission error:", e);
             }
         };
-
         requestPushPermission();
     }, []);
 
     useEffect(() => {
-        // 1. Проверяем наличие объекта Notification в глобальной области видимости
-        if (typeof window !== 'undefined' && 'Notification' in window) {
-            Notification.requestPermission().catch((err) =>
-                console.warn("Уведомления заблокированы или ошибка:", err)
-            );
-        } else {
-            console.log("Этот браузер не поддерживает системные уведомления");
-        }
-    }, []);
-
-
-    useEffect(() => {
-        if ('serviceWorker' in navigator) {
-            navigator.serviceWorker.addEventListener('controllerchange', () => {
-                // Когда воркер обновился — перезагружаем страницу
-                window.location.reload();
-            });
-        }
-    }, []);
-
-
-    useEffect(() => {
-        // 1. Мониторинг интернета на самом устройстве
         const handleStatusChange = () => setIsOnline(navigator.onLine);
         window.addEventListener('online', handleStatusChange);
         window.addEventListener('offline', handleStatusChange);
 
-        // 2. Перехват ошибок сети от Axios (если сервер упал или неверный IP)
         const interceptor = axiosClient.interceptors.response.use(
             response => response,
             error => {
-                if (!error.response) { // Ошибка сети (Network Error)
-                    setIsServerAvailable(false);
-                }
+                if (!error.response) setIsServerAvailable(false);
                 return Promise.reject(error);
             }
         );
@@ -95,16 +68,19 @@ const AppContent: React.FC = () => {
         };
     }, []);
 
-    const handleRetry = () => {
-        setIsServerAvailable(true);
-        window.location.reload();
-    };
+    useEffect(() => {
+        if ('serviceWorker' in navigator) {
+            navigator.serviceWorker.addEventListener('controllerchange', () => {
+                window.location.reload();
+            });
+        }
+    }, []);
 
+    // 2. И ТОЛЬКО ТЕПЕРЬ УСЛОВНЫЕ RETURN 🛑
     if (loading) {
         return <LoadingScreen />;
     }
 
-    // Если нет сети — заглушка
     if (!isOnline || !isServerAvailable) {
         return (
             <Box sx={{ height: '100vh' }}>
@@ -113,22 +89,17 @@ const AppContent: React.FC = () => {
         );
     }
 
+    // 3. ОСНОВНОЙ РЕНДЕР
     return (
         <Routes>
-            {/* Если залогинен и лезем на /login — кидаем в дашборд */}
             <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
-
-            {/* Защищенный роут */}
             <Route path="/dashboard/*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-
-            {/* Корень: решаем куда отправить на основе авторизации */}
             <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-
-            {/* Если зашли на несуществующий путь */}
             <Route path="*" element={<Navigate to="/" />} />
         </Routes>
     );
 };
+
 
 const App: React.FC = () => {
     return (

@@ -218,6 +218,20 @@ prod-check-maintenance: ## Имитация работ на проде
 
 
 
+prod-docker-clean-full: ## Очистить докер на продуктиве - чистка места
+	@ssh $(SSH_HOST) "docker image prune -f"
+	@ssh $(SSH_HOST) "docker builder prune -a -f"
+	@ssh $(SSH_HOST) "docker system prune -a --volumes -f"
+
+prod-disk-info: ## Сколько место на проде - табло состояния сервера Orion на проде
+		@echo "--- 🖥 СВОБОДНОЕ МЕСТО (Disk Free) ---"
+		@ssh $(SSH_HOST) "df -h | grep -E 'Filesystem|/$$'"
+		@echo "\n--- 📂 ТОП-10 ТЯЖЕЛЫХ ПАПОК (Usage) ---"
+		@ssh $(SSH_HOST) "du -sh /* 2>/dev/null | sort -rh | head -n 10"
+		@echo "\n--- 🐳 СТАТУС КОНТЕЙНЕРОВ (Docker) ---"
+		@ssh $(SSH_HOST) "docker ps --format 'table {{.Names}}\t{{.Status}}\t{{.Ports}}'"
+		@echo "\n--- 📈 ЗАГРУЗКА ПАМЯТИ (RAM) ---"
+		@ssh $(SSH_HOST) "free -h"
 
 
 

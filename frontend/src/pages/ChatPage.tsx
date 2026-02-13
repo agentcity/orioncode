@@ -81,10 +81,8 @@ export const ChatPage: React.FC<{ isMobile?: boolean }> = ({ isMobile }) => {
                 </Box>
             )}
 
-            <MessageInput 
-                newMessageText={chat.newMessageText}
-                setNewMessageText={chat.setNewMessageText}
-                handleSend={chat.handleSend}
+            <MessageInput
+                handleSend={(text) => chat.handleSend(text)} // Передаем текст из инпута в функцию отправки
                 takePhoto={chat.takePhoto}
                 isMobile={isMobile}
                 socket={chat.socket}
