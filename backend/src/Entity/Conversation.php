@@ -4,6 +4,7 @@ namespace App\Entity;
 
 use Ramsey\Uuid\Uuid;
 use App\Repository\ConversationRepository;
+use App\Organization\Entity\Organization;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
@@ -81,6 +82,11 @@ class Conversation
 
     #[ORM\OneToMany(mappedBy: 'conversation', targetEntity: Message::class, orphanRemoval: true)]
     private Collection $messages;
+
+    #[ORM\ManyToOne(targetEntity: Organization::class)]
+    #[ORM\JoinColumn(name: "organization_id", referencedColumnName: "id", nullable: true, onDelete: "SET NULL")]
+    private ?Organization $organization = null;
+
 
     public function __construct()
     {
@@ -176,4 +182,15 @@ class Conversation
         }
         return $this;
     }
+
+    public function getOrganization(): ?Organization
+    {
+        return $this->organization;
+    }
+    public function setOrganization(?Organization $org): self
+    {
+        $this->organization = $org; return $this;
+    }
+
+
 }

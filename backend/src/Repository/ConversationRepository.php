@@ -25,37 +25,39 @@ class ConversationRepository extends ServiceEntityRepository
     public function findAvailableConversations(User $user): array
     {
         $qb = $this->createQueryBuilder('c');
-        $userId = $user->getId();
 
         return $qb
-            ->addSelect('a', 'contact', 'org')
-            ->leftJoin('c.account', 'a')
+            ->addSelect('contact', 'a') // Предзагружаем для скорости отрисовки
             ->leftJoin('c.contact', 'contact')
-            ->leftJoin('a.organization', 'org')
-            // 🚀 Мы ПРИНУДИТЕЛЬНО джойним юзеров организации
-            // Если юзер удален из организации, этот join вернет NULL
-            ->leftJoin('org.users', 'ou', 'WITH', 'ou.id = :userId')
-            ->where(
-                $qb->expr()->orX(
-                // 1. Внутренние чаты (всегда доступны участникам)
-                    'c.assignedTo = :user',
-                    'c.targetUser = :user',
-                    // 2. Внешние чаты - ТОЛЬКО если юзер ЕСТЬ в этой организации прямо сейчас
-                    $qb->expr()->andX(
-                        'org.id IS NOT NULL',
-                        'ou.id IS NOT NULL'
-                    ),
-
-                )
-            )
+            ->leftJoin('c.account', 'a')
+            ->leftJoin('c.organization', 'org')
+            ->leftJoin('org.users', 'u', 'WITH', 'u.id = :userId')
+            ->where($qb->expr()->orX(
+                'c.assignedTo = :user',   // Личные внутренние чаты
+                'c.targetUser = :user',   // Личные внутренние чаты
+                'u.id = :userId'          // ЧАТЫ ОРГАНИЗАЦИИ (теперь связь прямая!)
+            ))
             ->setParameter('user', $user)
-            ->setParameter('userId', $userId)
+            ->setParameter('userId', $user->getId())
             ->orderBy('c.lastMessageAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
 
 
+    public function findLastMessages(string $conversationId, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('m')
+            ->where('m.conversation = :conversationId')
+            ->setParameter('conversationId', $conversationId)
+            // 🚀 Сначала берем самые последние по ID или дате
+            ->orderBy('m.sentAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+        // В контроллере мы их перевернем (array_reverse),
+        // чтобы в чате они шли от старых к новым.
+    }
 
 
 

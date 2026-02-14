@@ -14,8 +14,7 @@ use Symfony\Component\Uid\Uuid;
 
 class ChatService
 {
-    private $em;
-    private $params;
+    private $em;    private $params;
     private $messageRepository;
     private $aiService;
 
