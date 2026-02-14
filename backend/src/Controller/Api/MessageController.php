@@ -20,14 +20,44 @@ class MessageController extends AbstractController
     public function index(Conversation $conversation, MessageRepository $repository): JsonResponse
     {
         $user = $this->getUser();
-        if ($conversation->getAssignedTo() !== $user && $conversation->getTargetUser() !== $user) {
+        $userId = $user->getId()->toString();
+
+        // 1. ПРОВЕРКА ДОСТУПА (как в ConversationController) 🚀
+        $hasAccess = false;
+        if ($conversation->getType() === 'orion') {
+            if ($conversation->getAssignedTo() === $user || $conversation->getTargetUser() === $user) {
+                $hasAccess = true;
+            }
+        } else {
+            $org = $conversation->getAccount()?->getOrganization();
+            if ($org) {
+                foreach ($org->getUsers() as $orgUser) {
+                    if ($orgUser->getId()->toString() === $userId) {
+                        $hasAccess = true;
+                        break;
+                    }
+                }
+            }
+        }
+
+        if (!$hasAccess) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
 
-        $messages = $repository->findBy(['conversation' => $conversation], ['sentAt' => 'ASC']);
+        // 2. ЗАГРУЗКА ПОСЛЕДНИХ 20 СООБЩЕНИЙ 🚀
+        // Берем последние по времени, но потом развернем для фронта
+        $messages = $repository->findBy(
+            ['conversation' => $conversation],
+            ['sentAt' => 'DESC'], // Сначала последние
+            20                    // Только 20 штук
+        );
+
+        // Разворачиваем, чтобы в чате они шли: [старое -> новое]
+        $messages = array_reverse($messages);
 
         $data = array_map(function($m) use ($conversation) {
             $payload = $m->getPayload() ?? [];
+            // Логика определения senderId для внутренних чатов
             if ($conversation->getType() === 'orion' && !isset($payload['senderId'])) {
                 $payload['senderId'] = ($m->getDirection() === 'outbound')
                     ? $conversation->getAssignedTo()->getId()->toString()
@@ -50,6 +80,7 @@ class MessageController extends AbstractController
 
         return $this->json($data);
     }
+
 
     #[Route('', name: 'api_messages_send', methods: ['POST'])]
     public function send(

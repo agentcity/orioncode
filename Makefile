@@ -391,8 +391,22 @@ prod-db-status-table:
 	ssh orion@81.200.158.70 "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, first_name, last_name, roles FROM users WHERE id = '00000000-0000-0000-0000-000000000000';\""
 
 prod-db-inspect:
+	@echo "--- [1] ОРГАНИЗАЦИИ И БИЛЛИНГ (Баланс и Тарифы) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, balance, subscription_plan as plan FROM organizations;\""
+	@echo "\n--- [2] КОМАНДНЫЙ ДОСТУП (Кто в какой организации) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT o.name as org, u.email, u.first_name FROM organization_users ou JOIN organizations o ON o.id = ou.organization_id JOIN users u ON u.id = ou.user_id;\""
+	@echo "\n--- [3] АККАУНТЫ (Каналы ВК/ТГ/Авито и их привязка) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT a.id, a.name, a.type, a.status, o.name as organization FROM accounts a LEFT JOIN organizations o ON o.id = a.organization_id;\""
+	@echo "\n--- [4] ПЛАТЕЖИ (Т-Банк Транзакции) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, amount, status, external_id as bank_id, left(created_at::text, 19) as date FROM billing_payments ORDER BY created_at DESC LIMIT 5;\""
+	@echo "\n--- [5] КОНТАКТЫ (Клиенты из мессенджеров) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, main_name, source, external_id, account_id FROM contacts ORDER BY created_at DESC LIMIT 5;\""
+	@echo "\n--- [6] СООБЩЕНИЯ (Кто, Кому, Откуда) ---"
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 25) as text, direction, sender_type, manager_id as msg_from_user, contact_id as msg_from_contact FROM messages ORDER BY sent_at DESC LIMIT 10;\""
+
+
 	@echo "--- [1] АККАУНТЫ (Клиенты и Токены) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, credentials, status FROM accounts;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, status, organization_id, user_id, credentials FROM accounts;\""
 	@echo "\n--- [2] ПОЛЬЗОВАТЕЛИ (Команда и Орион Кот) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, email, first_name, last_name, roles FROM users ORDER BY created_at DESC LIMIT 10;\""
 
@@ -404,6 +418,10 @@ prod-db-inspect:
 
 	@echo "\n--- [5] СООБЩЕНИЯ (ReplyTo и Направление) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type, conversation_id, manager_id, contact_id FROM messages ORDER BY sent_at DESC LIMIT 10;\""
+
+
+
+
 
 
 # Удаление нескольких сообщений по ID на проде

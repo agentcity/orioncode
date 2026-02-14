@@ -7,14 +7,16 @@ use App\Entity\User;
 use Doctrine\Common\Collections\ArrayCollection;
 use Doctrine\Common\Collections\Collection;
 use Doctrine\ORM\Mapping as ORM;
-use Symfony\Component\Uid\Uuid;
+use Ramsey\Uuid\Uuid;
+use Ramsey\Uuid\UuidInterface;
+
 
 #[ORM\Entity]
 #[ORM\Table(name: 'organizations')]
 class Organization
 {
     #[ORM\Id, ORM\Column(type: 'uuid')]
-    private Uuid $id;
+    private UuidInterface $id;
 
     #[ORM\Column(length: 255)]
     private string $name;
@@ -38,7 +40,7 @@ class Organization
         $this->users = new ArrayCollection();
     }
 
-    public function getId(): Uuid { return $this->id; }
+    public function getId(): UuidInterface { return $this->id; }
 
     public function getName(): string { return $this->name; }
     public function setName(string $name): self { $this->name = $name; return $this; }

@@ -30,18 +30,7 @@ class ConversationController extends AbstractController
             $redis = null;
         }
 
-        $userId = $user->getId()->toString();
-
-        // Используем чистый SQL-подобный подход через QueryBuilder, чтобы точно найти всё
-        $qb = $repository->createQueryBuilder('c');
-        $conversations = $qb->where($qb->expr()->orX(
-            $qb->expr()->eq('c.assignedTo', ':user'),
-            $qb->expr()->eq('c.targetUser', ':user')
-        ))
-            ->setParameter('user', $user)
-            ->orderBy('c.lastMessageAt', 'DESC')
-            ->getQuery()
-            ->getResult();
+        $conversations = $repository->findAvailableConversations($user);
 
         $data = array_map(function($c) use ($user, $redis) {
             // Определяем, кто наш собеседник для отображения имени
@@ -93,52 +82,90 @@ class ConversationController extends AbstractController
     }
 
     #[Route('/{id}', name: 'api_conversations_show', methods: ['GET'])]
-    public function show(Conversation $conversation): JsonResponse
+    public function show(string $id, ConversationRepository $repository): JsonResponse
     {
         $user = $this->getUser();
+        $userId = $user->getId()->toString();
+
+        // 1. ОПТИМИЗАЦИЯ: Загружаем беседу вместе с аккаунтом, организацией и списком юзеров за ОДИН запрос
+        $conversation = $repository->createQueryBuilder('c')
+            ->addSelect('a', 'org', 'org_users', 'contact')
+            ->leftJoin('c.account', 'a')
+            ->leftJoin('c.contact', 'contact')
+            ->leftJoin('a.organization', 'org')
+            ->leftJoin('org.users', 'org_users')
+            ->where('c.id = :id')
+            ->setParameter('id', $id)
+            ->getQuery()
+            ->getOneOrNullResult();
+
+        if (!$conversation) {
+            return $this->json(['error' => 'Conversation not found'], 404);
+        }
+
+        // 2. ПРОВЕРКА ДОСТУПА ПО ID (Это быстрее и надежнее для Proxy-объектов)
+        // 1. Сначала проверяем внутренние чаты (Orion)
+        if ($conversation->getType() === 'orion') {
+            $assignedId = $conversation->getAssignedTo()?->getId()?->toString();
+            $targetId = $conversation->getTargetUser()?->getId()?->toString();
+
+            if ($assignedId === $userId || $targetId === $userId) {
+                $hasAccess = true;
+            }
+        }
+
+        // 2. Если еще нет доступа, проверяем через Аккаунт и Организацию
+        if (!$hasAccess && ($account = $conversation->getAccount())) {
+
+            // Проверка прямого владельца (если user_id еще заполнен)
+            if ($account->getUser()?->getId()?->toString() === $userId) {
+                $hasAccess = true;
+            }
+
+            // Проверка через членство в организации (нативный метод коллекции)
+            if (!$hasAccess && ($org = $account->getOrganization())) {
+                // filter() по коллекции работает быстрее, чем полный foreach,
+                // так как мы уже сделали JOIN в QueryBuilder выше.
+                $hasAccess = $org->getUsers()->exists(
+                    fn($key, $orgUser) => $orgUser->getId()->toString() === $userId
+                );
+            }
+        }
+
+        // 3. Если всё мимо — рубим доступ
+        if (!$hasAccess) {
+            return $this->json(['error' => 'Access Denied'], 403);
+        }
+
+
+        // 3. Твоя логика Redis (оставляем без изменений)
         try {
             $redisUrl = $_ENV['REDIS_URL'] ?? 'redis://orion_redis:6379';
-            $redis = RedisAdapter::createConnection($redisUrl);
+            $redis = \Symfony\Component\Cache\Adapter\RedisAdapter::createConnection($redisUrl);
         } catch (\Exception $e) {
             $redis = null;
         }
 
-        // Проверка доступа
-        if ($conversation->getAssignedTo() !== $user && $conversation->getTargetUser() !== $user) {
-            return $this->json(['error' => 'Access Denied'], 403);
-        }
-
         // Определяем имя для шапки чата
-        $targetId = null; // Инициализируем
-
+        $targetId = null;
         if ($conversation->getType() === 'orion') {
             $recipient = ($conversation->getAssignedTo() === $user) ? $conversation->getTargetUser() : $conversation->getAssignedTo();
-            if ($recipient) {
-                $contactName = $recipient->getFirstName() . ' ' . $recipient->getLastName();
-                $targetId = $recipient->getId()->toString(); // БЕРЕМ ID ИЗ RECIPIENT
-            } else {
-                $contactName = 'Коллега';
-            }
+            $contactName = $recipient ? $recipient->getFirstName() . ' ' . $recipient->getLastName() : 'Коллега';
+            $targetId = $recipient ? $recipient->getId()->toString() : null;
         } else {
             $contact = $conversation->getContact();
             $contactName = $contact ? $contact->getMainName() : 'Клиент';
-            $targetId = $contact ? $contact->getId() : null; // БЕРЕМ ID ИЗ CONTACT
+            $targetId = $contact ? $contact->getId()->toString() : null;
         }
 
-        // 2. Проверяем статус в Redis
+        // Статус Online
         $isOnline = false;
         $lastSeen = null;
-
         if ($redis && $targetId) {
             try {
-                // Устанавливаем таймаут, чтобы скрипт не висел, если Redis тупит
-                $status = $redis->get("user:status:{$targetId}");
-                $isOnline = ($status === 'online');
+                $isOnline = ($redis->get("user:status:{$targetId}") === 'online');
                 $lastSeen = $redis->get("user:lastSeen:{$targetId}");
-            } catch (\Exception $e) {
-                // Если Redis упал, просто ставим false и идем дальше
-                $isOnline = false;
-            }
+            } catch (\Exception $e) {}
         }
 
         return $this->json([
@@ -152,6 +179,7 @@ class ConversationController extends AbstractController
             ]
         ]);
     }
+
 
     #[Route('/internal', name: 'api_conversations_create_internal', methods: ['POST'], priority: 2)]
     public function createInternal(Request $request, UserRepository $userRepo, EntityManagerInterface $em): JsonResponse

@@ -36,4 +36,20 @@ class MessageRepository extends ServiceEntityRepository
             ->getQuery()
             ->getResult();
     }
+
+    public function findLastMessages(string $conversationId, int $limit = 20): array
+    {
+        return $this->createQueryBuilder('m')
+            ->where('m.conversation = :conversationId')
+            ->setParameter('conversationId', $conversationId)
+            // 🚀 Сначала берем самые последние по ID или дате
+            ->orderBy('m.sentAt', 'DESC')
+            ->setMaxResults($limit)
+            ->getQuery()
+            ->getResult();
+        // В контроллере мы их перевернем (array_reverse),
+        // чтобы в чате они шли от старых к новым.
+    }
+
+
 }
