@@ -64,6 +64,9 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\ManyToMany(targetEntity: Organization::class, mappedBy: 'users')]
     private Collection $organizations;
 
+    #[ORM\Column(type: 'decimal', precision: 12, scale: 2, options: ['default' => 0])]
+    private string $balance = '0.00';
+
     public function __construct()
     {
         $this->id = Uuid::v4();
@@ -222,5 +225,8 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
         $this->organizations->removeElement($organization);
         return $this;
     }
+
+    public function getBalance(): float { return (float) $this->balance; }
+    public function setBalance(float $balance): self { $this->balance = (string) $balance; return $this; }
 }
 

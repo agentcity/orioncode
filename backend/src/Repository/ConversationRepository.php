@@ -25,24 +25,27 @@ class ConversationRepository extends ServiceEntityRepository
     public function findAvailableConversations(User $user): array
     {
         $qb = $this->createQueryBuilder('c');
+        $userId = $user->getId();
 
         return $qb
-            ->addSelect('contact', 'a') // Предзагружаем для скорости отрисовки
+            ->addSelect('contact', 'a')
             ->leftJoin('c.contact', 'contact')
             ->leftJoin('c.account', 'a')
             ->leftJoin('c.organization', 'org')
-            ->leftJoin('org.users', 'u', 'WITH', 'u.id = :userId')
+            ->leftJoin('org.users', 'ou', 'WITH', 'ou.id = :userId')
+            // 🚀 ТЕПЕРЬ ЛОГИКА ПРОСТАЯ И БЫСТРАЯ:
             ->where($qb->expr()->orX(
-                'c.assignedTo = :user',   // Личные внутренние чаты
-                'c.targetUser = :user',   // Личные внутренние чаты
-                'u.id = :userId'          // ЧАТЫ ОРГАНИЗАЦИИ (теперь связь прямая!)
+                'c.assignedTo = :user', // Личный/Внутренний
+                'c.targetUser = :user', // Личный/Внутренний
+                'ou.id = :userId'        // ПРЯМАЯ СВЯЗЬ С ОРГАНИЗАЦИЕЙ ⚡️
             ))
             ->setParameter('user', $user)
-            ->setParameter('userId', $user->getId())
+            ->setParameter('userId', $userId)
             ->orderBy('c.lastMessageAt', 'DESC')
             ->getQuery()
             ->getResult();
     }
+
 
 
     public function findLastMessages(string $conversationId, int $limit = 20): array

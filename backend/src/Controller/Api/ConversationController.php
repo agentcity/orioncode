@@ -103,36 +103,26 @@ class ConversationController extends AbstractController
             return $this->json(['error' => 'Conversation not found'], 404);
         }
 
-        // 2. ПРОВЕРКА ДОСТУПА ПО ID (Это быстрее и надежнее для Proxy-объектов)
-        // 1. Сначала проверяем внутренние чаты (Orion)
-        if ($conversation->getType() === 'orion') {
-            $assignedId = $conversation->getAssignedTo()?->getId()?->toString();
-            $targetId = $conversation->getTargetUser()?->getId()?->toString();
+        // 🚀 НОВАЯ БЫСТРАЯ ПРОВЕРКА ДОСТУПА 2026:
+        $hasAccess = false;
 
-            if ($assignedId === $userId || $targetId === $userId) {
-                $hasAccess = true;
-            }
+        // 1. Проверяем личный/внутренний доступ (Orion чаты)
+        $assignedId = $conversation->getAssignedTo()?->getId()?->toString();
+        $targetId = $conversation->getTargetUser()?->getId()?->toString();
+
+        if ($assignedId === $userId || $targetId === $userId) {
+            $hasAccess = true;
         }
 
-        // 2. Если еще нет доступа, проверяем через Аккаунт и Организацию
-        if (!$hasAccess && ($account = $conversation->getAccount())) {
-
-            // Проверка прямого владельца (если user_id еще заполнен)
-            if ($account->getUser()?->getId()?->toString() === $userId) {
-                $hasAccess = true;
-            }
-
-            // Проверка через членство в организации (нативный метод коллекции)
-            if (!$hasAccess && ($org = $account->getOrganization())) {
-                // filter() по коллекции работает быстрее, чем полный foreach,
-                // так как мы уже сделали JOIN в QueryBuilder выше.
-                $hasAccess = $org->getUsers()->exists(
-                    fn($key, $orgUser) => $orgUser->getId()->toString() === $userId
-                );
-            }
+        // 2. Проверяем доступ через Организацию (ВК/Авито/ТГ)
+        // Используем нашу новую колонку organization прямо в беседе!
+        if (!$hasAccess && ($org = $conversation->getOrganization())) {
+            // Проверяем, есть ли текущий юзер в списке участников организации
+            $hasAccess = $org->getUsers()->exists(
+                fn($key, $orgUser) => $orgUser->getId()->toString() === $userId
+            );
         }
 
-        // 3. Если всё мимо — рубим доступ
         if (!$hasAccess) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
@@ -258,7 +248,30 @@ class ConversationController extends AbstractController
     #[Route('/{id}/read', name: 'api_conversations_read', methods: ['POST'])]
     public function markAsRead(Conversation $conversation, EntityManagerInterface $em): JsonResponse
     {
-        if ($conversation->getAssignedTo() !== $this->getUser() && $conversation->getTargetUser() !== $this->getUser()) {
+        $user = $this->getUser();
+        $userId = $user->getId()->toString();
+
+        // 🚀 НОВАЯ БЫСТРАЯ ПРОВЕРКА ДОСТУПА 2026:
+        $hasAccess = false;
+
+        // 1. Проверяем личный/внутренний доступ (Orion чаты)
+        $assignedId = $conversation->getAssignedTo()?->getId()?->toString();
+        $targetId = $conversation->getTargetUser()?->getId()?->toString();
+
+        if ($assignedId === $userId || $targetId === $userId) {
+            $hasAccess = true;
+        }
+
+        // 2. Проверяем доступ через Организацию (ВК/Авито/ТГ)
+        // Используем нашу новую колонку organization прямо в беседе!
+        if (!$hasAccess && ($org = $conversation->getOrganization())) {
+            // Проверяем, есть ли текущий юзер в списке участников организации
+            $hasAccess = $org->getUsers()->exists(
+                fn($key, $orgUser) => $orgUser->getId()->toString() === $userId
+            );
+        }
+
+        if (!$hasAccess) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
 

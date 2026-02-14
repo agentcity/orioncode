@@ -22,27 +22,30 @@ class MessageController extends AbstractController
         $user = $this->getUser();
         $userId = $user->getId()->toString();
 
-        // 1. ПРОВЕРКА ДОСТУПА (как в ConversationController) 🚀
+        // 🚀 НОВАЯ БЫСТРАЯ ПРОВЕРКА ДОСТУПА 2026:
         $hasAccess = false;
-        if ($conversation->getType() === 'orion') {
-            if ($conversation->getAssignedTo() === $user || $conversation->getTargetUser() === $user) {
-                $hasAccess = true;
-            }
-        } else {
-            $org = $conversation->getAccount()?->getOrganization();
-            if ($org) {
-                foreach ($org->getUsers() as $orgUser) {
-                    if ($orgUser->getId()->toString() === $userId) {
-                        $hasAccess = true;
-                        break;
-                    }
-                }
-            }
+
+        // 1. Проверяем личный/внутренний доступ (Orion чаты)
+        $assignedId = $conversation->getAssignedTo()?->getId()?->toString();
+        $targetId = $conversation->getTargetUser()?->getId()?->toString();
+
+        if ($assignedId === $userId || $targetId === $userId) {
+            $hasAccess = true;
+        }
+
+        // 2. Проверяем доступ через Организацию (ВК/Авито/ТГ)
+        // Используем нашу новую колонку organization прямо в беседе!
+        if (!$hasAccess && ($org = $conversation->getOrganization())) {
+            // Проверяем, есть ли текущий юзер в списке участников организации
+            $hasAccess = $org->getUsers()->exists(
+                fn($key, $orgUser) => $orgUser->getId()->toString() === $userId
+            );
         }
 
         if (!$hasAccess) {
             return $this->json(['error' => 'Access Denied'], 403);
         }
+
 
         // 2. ЗАГРУЗКА ПОСЛЕДНИХ 20 СООБЩЕНИЙ 🚀
         // Берем последние по времени, но потом развернем для фронта

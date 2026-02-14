@@ -5,6 +5,7 @@ namespace App\Service;
 use App\Service\Messenger\MessengerFactory;
 use App\Entity\Conversation;
 use App\Entity\Message;
+use App\Organization\Entity\Organization;
 use App\Repository\MessageRepository;
 use App\Service\AI\AiModelInterface;
 use Doctrine\ORM\EntityManagerInterface;
@@ -35,6 +36,21 @@ class ChatService
 
     public function processNewMessage(Conversation $conversation, $user, array $data): Message
     {
+        // 1. АВТО-ПРИВЯЗКА ОРГАНИЗАЦИИ (Денормализация 2026)
+        // Привязываем организацию ТОЛЬКО если это внешний канал (ВК, ТГ, Авито)
+        if ($conversation->getType() !== 'orion') {
+            if (!$conversation->getOrganization() && $conversation->getAccount()) {
+                $org = $conversation->getAccount()->getOrganization();
+                if ($org) {
+                    $conversation->setOrganization($org);
+                    $this->em->persist($conversation);
+                }
+            }
+        }
+        // Если тип 'orion' — поле organization_id остается NULL.
+        // Доступ к такому чату будет ВСЕГДА только у двух участников,
+        // вне зависимости от того, в каких организациях они состоят.
+
         // 1. Создаем сообщение от человека
         $message = new Message();
         $message->setConversation($conversation);
@@ -107,7 +123,6 @@ class ChatService
         }
 
 
-
         // 2. Рассылаем сокетам сообщение пользователя
         $this->broadcastToRedis($conversation, $message);
 
@@ -126,11 +141,38 @@ class ChatService
 
     public function generateAiReply(Conversation $conversation, string $userText)
     {
+        $cost = 2.00;
+        $organization = $conversation->getOrganization();
+        $user = $conversation->getAssignedTo(); // Владелец личного чата
 
-//        if ($organization->getBalance() < 2.00) {
-//            return; // ИИ замолкает, пока нет денег
-//        }
-//        $organization->setBalance($organization->getBalance() - 2.00);
+        // 🚀 1. ОПРЕДЕЛЯЕМ, КТО ПЛАТИТ: Организация или Юзер
+        $payer = null;
+        $payerName = "";
+
+        if ($organization) {
+            $payer = $organization;
+            $payerName = "организации «" . $organization->getName() . "»";
+        } else if ($conversation->getType() === 'orion' && $user) {
+            $payer = $user;
+            $payerName = "Ваш личный";
+        }
+
+        // 🚀 2. ПРОВЕРКА И СПИСАНИЕ (ОДИН БЛОК ДЛЯ ВСЕХ)
+        if ($payer) {
+            if ($payer->getBalance() < $cost) {
+                $this->sendBotServiceMessage($conversation, "🤖 Внимание: $payerName баланс исчерпан. Ответы ИИ приостановлены. Пожалуйста, пополните счет.");
+                return;
+            }
+
+            // Списываем средства
+            $payer->setBalance($payer->getBalance() - $cost);
+            $this->em->persist($payer);
+            $this->em->flush();
+        } else {
+            // Если нет ни организации, ни юзера — ИИ молчит
+            return;
+        }
+
 
         // 1. Собираем историю сообщений для контекста
         $history = [];
@@ -185,15 +227,41 @@ class ChatService
         $this->broadcastToRedis($conversation, $aiMsg);
     }
 
+
+    /**
+     * 🚀 ВСПОМОГАТЕЛЬНЫЙ МЕТОД ДЛЯ УВЕДОМЛЕНИЙ БОТА
+     */
+    private function sendBotServiceMessage(Conversation $conversation, string $text): void
+    {
+        $aiMsg = new Message();
+        $aiMsg->setConversation($conversation);
+        $aiMsg->setText($text);
+        $aiMsg->setDirection('inbound');
+        $aiMsg->setSenderType('bot');
+        $aiMsg->setSentAt(new \DateTimeImmutable());
+        $aiMsg->setStatus('delivered');
+        $aiMsg->setPayload(['senderId' => self::AI_UUID, 'service' => true]);
+
+        $this->em->persist($aiMsg);
+        $this->em->flush();
+        $this->broadcastToRedis($conversation, $aiMsg);
+    }
+
     private function broadcastToRedis(Conversation $conversation, Message $message)
     {
         try {
             $redis = RedisAdapter::createConnection($_ENV['REDIS_URL'] ?? 'redis://orion_redis:6379');
+            // 🚀 БЕРЕМ ДАННЫЕ НАПРЯМУЮ ИЗ БЕСЕДЫ (Денормализация)
+            $orgId = $conversation->getOrganization() ? $conversation->getOrganization()->getId()->toString() : null;
+
+            // 🚀 ЗАЩИТА: Аккаунт может быть NULL для внутренних чатов (orion)
             $account = $conversation->getAccount();
+            $userId = ($account && $account->getUser()) ? $account->getUser()->getId()->toString() : "0";
+
             $data = [
                 'conversationId' => $conversation->getId()->toString(),
-                'orgId' => $account->getOrganization()?->getId()->toString(),
-                'userId' => $account->getUser()->getId()->toString(), // 🚀 Для одиночек
+                'orgId' => $orgId,
+                'userId' => $userId, // 🚀 Для одиночек
                 'payload' => [
                     'id' => $message->getId()->toString(),
                     'text' => $message->getText(),

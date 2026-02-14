@@ -408,13 +408,13 @@ prod-db-inspect:
 	@echo "--- [1] АККАУНТЫ (Клиенты и Токены) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, name, type, status, organization_id, user_id, credentials FROM accounts;\""
 	@echo "\n--- [2] ПОЛЬЗОВАТЕЛИ (Команда и Орион Кот) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, email, first_name, last_name, roles FROM users ORDER BY created_at DESC LIMIT 10;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, email, first_name, last_name, balance, roles FROM users ORDER BY created_at DESC LIMIT 10;\""
 
 	@echo "\n--- [3] КОНТАКТЫ (Клиенты из мессенджеров) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, main_name, source, external_id, account_id FROM contacts LIMIT 10;\""
 
 	@echo "\n--- [4] БЕСЕДЫ (Активность чатов) ---"
-	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, type, status, unread_count, left(last_message_at::text, 19) as last_msg FROM conversations ORDER BY last_message_at DESC LIMIT 5;\""
+	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, type, status, organization_id, assigned_to_id, unread_count, left(last_message_at::text, 19) as last_msg FROM conversations ORDER BY last_message_at DESC LIMIT 10;\""
 
 	@echo "\n--- [5] СООБЩЕНИЯ (ReplyTo и Направление) ---"
 	@ssh $(SSH_HOST) "docker exec orion_db_prod psql -U orion_admin -d orion_db -c \"SELECT id, left(text, 30) as text, direction, reply_to_id, sender_type, conversation_id, manager_id, contact_id FROM messages ORDER BY sent_at DESC LIMIT 10;\""

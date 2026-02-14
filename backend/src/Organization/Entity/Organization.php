@@ -35,7 +35,7 @@ class Organization
     private string $subscriptionPlan = 'trial'; // 'trial', 'business', 'enterprise'
 
     public function __construct() {
-        $this->id = Uuid::v4();
+        $this->id = Uuid::uuid4();
         $this->accounts = new ArrayCollection();
         $this->users = new ArrayCollection();
     }
