@@ -1,0 +1,7 @@
+# config/services_test.yaml
+services:
+
+    # 🚀 Указываем, какой класс реализует интерфейс в тестах
+    App\Service\AI\AiModelInterface:
+        alias: App\Service\AI\ProxyApiService # Или тот класс, который у тебя в ChatService
+        public: true

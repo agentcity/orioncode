@@ -59,9 +59,10 @@ class AvitoController extends AbstractController
                 $conv = (new Conversation())
                     ->setContact($contact)
                     ->setAccount($account)
+                    ->setOrganization($account->getOrganization())
                     ->setType('avito')
                     ->setStatus('active')
-                    ->setAssignedTo($account->getOwner());
+                    ->setAssignedTo($account->getUser());
                 $em->persist($conv);
             }
 

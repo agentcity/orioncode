@@ -25,3 +25,19 @@ api_index:
 webhooks:
     resource: ../src/Controller/Webhook/
     type: attribute
+
+messenger_controllers:
+    resource: ../src/Messenger/Controller/
+    type: attribute
+
+messenger_webhooks:
+    resource: ../src/Messenger/Controller/Webhook/
+    type: attribute
+
+billing_controllers:
+    resource: ../src/Billing/Controller/
+    type: attribute
+
+organization_controllers:
+    resource: ../src/Organization/Controller/
+    type: attribute
