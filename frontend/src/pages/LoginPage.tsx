@@ -1,9 +1,9 @@
 import React, { useState, useEffect } from 'react';
 import { useAuth } from '../context/AuthContext';
-import { useNavigate } from 'react-router-dom';
+import { useNavigate, Link as RouterLink  } from 'react-router-dom';
 import {
     TextField, Button, Box, Typography, Alert,
-    Paper, Container, Fade, keyframes
+    Paper, Container, Fade, keyframes, Link, Stack
 } from '@mui/material';
 import { AutoAwesome } from '@mui/icons-material';
 import LoadingScreen from '../components/LoadingScreen';
@@ -23,17 +23,31 @@ const LoginPage: React.FC = () => {
 
     useEffect(() => {
         if (isAuthenticated) {
-            navigate('/dashboard');
+            navigate('/dashboard', { replace: true });
         }
     }, [isAuthenticated, navigate]);
 
+    
     const handleSubmit = async (event: React.FormEvent) => {
         event.preventDefault();
         setError(null);
+        if (!email || !password) {
+            setError('Заполните все поля');
+            return;
+        }
+
         try {
             await login(email, password);
         } catch (err: any) {
-            setError(err.response?.data?.message || 'Ошибка входа. Проверьте данные.');
+            const serverMessage = err.response?.data?.message || err.response?.data?.error || '';
+
+            if (serverMessage === 'Invalid credentials.') {
+                setError('Неверный email или пароль');
+            } else if (err.code === 'ERR_NETWORK') {
+                setError('Нет связи с сервером Orion');
+            } else {
+                setError(serverMessage || 'Ошибка входа. Проверьте данные.');
+            }
         }
     };
 
@@ -99,6 +113,11 @@ const LoginPage: React.FC = () => {
                                 required
                                 sx={{ '& .MuiOutlinedInput-root': { borderRadius: 3 } }}
                             />
+                            <Box sx={{ textAlign: 'right', mt: 1 }}>
+                                <Link component={RouterLink} to="/forgot-password" variant="caption" sx={{ color: '#1976d2', textDecoration: 'none', fontWeight: 500 }}>
+                                    Забыли пароль?
+                                </Link>
+                            </Box>
                             <Button
                                 type="submit"
                                 variant="contained"
@@ -116,6 +135,14 @@ const LoginPage: React.FC = () => {
                             >
                                 Войти
                             </Button>
+                            <Stack direction="row" spacing={1} justifyContent="center" sx={{ mt: 3 }}>
+                                <Typography variant="body2" color="text.secondary">
+                                    Нет аккаунта?
+                                </Typography>
+                                <Link component={RouterLink} to="/register" variant="body2" sx={{ color: '#1976d2', textDecoration: 'none', fontWeight: 600 }}>
+                                    Создать профиль
+                                </Link>
+                            </Stack>
                         </Box>
                     </Paper>
                 </Fade>

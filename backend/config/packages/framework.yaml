@@ -5,11 +5,19 @@ framework:
     # Note that the session will be started ONLY if you read or write from it.
     session: true
 
+    rate_limiter:
+        registration_login:
+            policy: 'fixed_window'
+            limit: 3
+            interval: '1 minute'
+
     #esi: true
     #fragments: true
     cache:
         app: cache.adapter.redis
         default_redis_provider: '%env(REDIS_URL)%'
+
+
 
 when@test:
     framework:

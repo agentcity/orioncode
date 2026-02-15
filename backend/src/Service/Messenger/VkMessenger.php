@@ -3,6 +3,7 @@
 namespace App\Service\Messenger;
 
 use Symfony\Contracts\HttpClient\HttpClientInterface;
+use App\Entity\Account;
 
 class VkMessenger implements MessengerInterface
 {
@@ -13,8 +14,10 @@ class VkMessenger implements MessengerInterface
 // 1. Имя аргумента должно быть $externalId (как в интерфейсе)
 // 2. Токен должен быть ?string и по умолчанию null
 // 3. Возвращаемый тип должен быть bool
-    public function sendMessage(string $externalId, string $text, ?string $token = null): bool
+    public function sendMessage(string $externalId, string $text, Account $account): bool
     {
+        $token = $account->getCredential('vk_token');
+
         if (!$token) {
             return false;
         }

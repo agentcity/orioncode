@@ -23,9 +23,13 @@ class AvitoController extends AbstractController
 
         $data = json_decode($request->getContent(), true);
 
+        error_log("DEBUG AVITO: " . json_encode($data));
+
+        $payload = $data['payload']['value'] ?? $data['value'] ?? null;
+
         // Авито шлет тип 'message' в поле 'type'
-        if (isset($data['payload']['value']['text'])) {
-            $payload = $data['payload']['value'];
+        if ($payload && isset($payload['text'])) {
+
             $chatId = $payload['chat_id'];
             $userId = (string)$payload['user_id'];
             $text = $payload['text'];
@@ -33,6 +37,15 @@ class AvitoController extends AbstractController
 
             // Игнорируем собственные сообщения (от самого Авито-аккаунта)
             // Обычно в Авито API это проверяется сравнением authorId и clientId
+
+            // Защита от зацикливания: если сообщение пришло от самого владельца аккаунта — игнорим
+            if ($authorId === $userId && !empty($authorId)) {
+                // Если Авито присылает нам наше же сообщение как уведомление
+                return new Response('own message ignored', 200);
+            }
+
+            // ИЗВЛЕКАЕМ ID ОБЪЯВЛЕНИЯ
+            $itemId = $payload['item_id'] ?? null;
 
             // 1. Находим/Создаем контакт
             $contact = $em->getRepository(Contact::class)->findOneBy([
@@ -63,6 +76,15 @@ class AvitoController extends AbstractController
                     ->setType('avito')
                     ->setStatus('active')
                     ->setAssignedTo($account->getUser());
+
+                // СОХРАНЯЕМ КОНТЕКСТ ОБЪЯВЛЕНИЯ
+                if ($itemId) {
+                    $conv->setPayload([
+                        'itemId' => $itemId,
+                        'itemUrl' => "https://www.avito.ru" . $itemId
+                    ]);
+                }
+
                 $em->persist($conv);
             }
 

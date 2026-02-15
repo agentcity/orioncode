@@ -26,6 +26,13 @@ services:
     # Создаем алиас: когда Symfony видит ClientInterface, она отдает клиент 'default'
     Predis\ClientInterface: '@snc_redis.default'
 
+    # ЖЕСТКАЯ ПРИВЯЗКА ДЛЯ РЕГИСТРАЦИИ:
+    App\System\Controller\Api\RegistrationController:
+        arguments:
+            # Символ @ говорит Symfony: "Возьми именно этот готовый сервис"
+            $registrationLoginLimiter: '@limiter.registration_login'
+
+
     App\MessageHandler\SendMessageHandler:
         arguments:
             $tgToken: '%telegram_token%'

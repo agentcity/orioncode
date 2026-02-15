@@ -1,7 +1,10 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { AuthProvider, useAuth } from './context/AuthContext';
+import ProtectedRoute from './components/ProtectedRoute'; // 🚀 ПРОВЕРЬ ПУТЬ!
 import LoginPage from './pages/LoginPage';
+import RegisterPage from './pages/RegisterPage';
+import ForgotPasswordPage from './pages/ForgotPasswordPage';
 import DashboardPage from './pages/DashboardPage';
 import OfflineStub from './components/OfflineStub';
 import axiosClient from './api/axiosClient';
@@ -76,8 +79,8 @@ const AppContent: React.FC = () => {
         }
     }, []);
 
-    // 2. И ТОЛЬКО ТЕПЕРЬ УСЛОВНЫЕ RETURN 🛑
-    if (loading) {
+    // 2. И ТОЛЬКО ТЕПЕРЬ УСЛОВНЫЕ RETURN
+    if (loading && !user && window.location.pathname !== '/login') {
         return <LoadingScreen />;
     }
 
@@ -92,10 +95,19 @@ const AppContent: React.FC = () => {
     // 3. ОСНОВНОЙ РЕНДЕР
     return (
         <Routes>
-            <Route path="/login" element={!isAuthenticated ? <LoginPage /> : <Navigate to="/dashboard" />} />
-            <Route path="/dashboard/*" element={<PrivateRoute><DashboardPage /></PrivateRoute>} />
-            <Route path="/" element={<Navigate to={isAuthenticated ? "/dashboard" : "/login"} />} />
-            <Route path="*" element={<Navigate to="/" />} />
+            {/* Публичные роуты без лишних условий */}
+            <Route path="/login" element={<LoginPage />} />
+            <Route path="/register" element={<RegisterPage />} />
+            <Route path="/forgot-password" element={<ForgotPasswordPage />} />
+
+            {/* Приватные роуты под защитой */}
+            <Route path="/dashboard/*" element={
+                <ProtectedRoute>
+                    <DashboardPage />
+                </ProtectedRoute>
+            } />
+
+            <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
     );
 };

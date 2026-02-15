@@ -61,7 +61,7 @@ class User implements UserInterface, PasswordAuthenticatedUserInterface
     #[ORM\OneToMany(mappedBy: 'sender', targetEntity: Message::class)]
     private Collection $messages;
 
-    #[ORM\ManyToMany(targetEntity: Organization::class, mappedBy: 'users')]
+    #[ORM\ManyToMany(targetEntity: Organization::class, mappedBy: 'users', cascade: ['persist'])]
     private Collection $organizations;
 
     #[ORM\Column(type: 'decimal', precision: 12, scale: 2, options: ['default' => 0])]

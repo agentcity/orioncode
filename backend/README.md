@@ -72,3 +72,24 @@ https://api.orioncode.ru
 Передайте вашему менеджеру Orion (или введите в личном кабинете) два параметра:
 Ключ доступа (из Шага 2).
 Код подтверждения сервера (из Шага 3).
+
+
+
+
+Подключение Авито 
+Нужно получить ключи тут https://www.avito.ru/professionals/api
+
+Client_id:
+rkdfsdfsdfY2M-xYsdfMZ
+Сlient_secret:
+MX2myfsdfsdePzMnc_gJ0bfsdfsdUo-ed
+
+В кабинете разрабочтика создать приложение https://developers.avito.ru/applications 
+
+Название - Организация 
+Url - https://api.orioncode.ru/api/webhooks/avito/<UUID_АККАУНТА>
+Назначение приложения - Интеграция с внутренней системой crm 
+
+Дождитесь подтверждения приложения 
+
+

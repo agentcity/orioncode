@@ -40,6 +40,7 @@
         "symfony/process": "8.0.*",
         "symfony/property-access": "8.0.*",
         "symfony/property-info": "8.0.*",
+        "symfony/rate-limiter": "8.0.*",
         "symfony/redis-messenger": "8.0.*",
         "symfony/routing": "8.0.*",
         "symfony/runtime": "8.0.*",

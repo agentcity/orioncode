@@ -297,14 +297,12 @@ class ChatService
 
             if (!$account || !$contact) return;
 
-            // Ищем токен: 'telegram_token', 'whatsapp_token' и т.д.
-            $token = $account->getCredential($type . '_token') ?? null;
-
             $externalId = $contact->getExternalId();
 
-            if ($token && $externalId) {
+            if ($externalId) {
                 try {
-                    $messenger->sendMessage($externalId, $text, $token);
+                    // 🚀 ПРОСТО ПЕРЕДАЕМ АККАУНТ ЦЕЛИКОМ
+                    $messenger->sendMessage($externalId, $text, $account);
                 } catch (\Exception $e) {
                     error_log("EXTERNAL SEND ERROR ({$type}): " . $e->getMessage());
                 }

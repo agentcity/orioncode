@@ -26,6 +26,10 @@ webhooks:
     resource: ../src/Controller/Webhook/
     type: attribute
 
+system_controllers:
+    resource: ../src/System/Controller/Api/
+    type: attribute
+
 messenger_controllers:
     resource: ../src/Messenger/Controller/
     type: attribute
@@ -41,3 +45,5 @@ billing_controllers:
 organization_controllers:
     resource: ../src/Organization/Controller/
     type: attribute
+
+
